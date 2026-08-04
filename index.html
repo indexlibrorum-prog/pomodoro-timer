@@ -94,8 +94,9 @@
   .rec.open .chev.a{transform:rotate(90deg)}
   .rec-body{padding:0 18px 18px;display:flex;flex-direction:column;gap:12px}
   .crumb{display:flex;flex-wrap:wrap;gap:2px;align-items:center;font-size:12px;color:var(--fg-dim)}
-  .crumb button{background:none;border:0;padding:2px 4px;font-size:12px;font-weight:500;color:var(--fg-dim);border-radius:6px}
-  .crumb button:last-child{color:var(--fg)}
+  .crumb button{background:var(--card2);border:1px solid var(--line);padding:4px 9px;font-size:12px;
+    font-weight:500;color:var(--fg-dim);border-radius:7px}
+  .crumb button:last-child{color:var(--fg);background:none;border-color:transparent}
   .tree{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:300px;overflow:auto}
   .tree .empty{font-size:13px;color:var(--fg-dim);padding:14px 4px;text-align:center;line-height:1.6}
   .row{display:flex;align-items:center;gap:10px;background:var(--card2);border:1px solid transparent;
@@ -291,6 +292,7 @@
       <ul class="tree" id="tree"></ul>
       <div class="form hidden" id="form"></div>
       <div class="rec-actions">
+        <button class="sm hidden" id="btnUp">← 戻る</button>
         <button class="sm" id="btnAdd">＋ 追加</button>
         <button class="sm hidden" id="btnScan">📷 参考書</button>
         <button class="sm hidden" id="btnIcs">📅 カレンダーへ</button>
@@ -575,12 +577,18 @@
   }
   function toggleDone(n, on){
     if(on){
+      // 取り消せるように、進める前の状態を控えておく
+      n.prev = { doneAt:n.doneAt||null, nextReview:n.nextReview||null, reviewIdx:n.reviewIdx||0 };
       n.doneAt = dayKey();
       if(reviewOn(n)){
         n.nextReview = nextReviewOf(n);
         n.reviewIdx = Math.min((n.reviewIdx||0)+1, stepsFor(n.id).length-1);
       }
+    }else if(n.prev){
+      n.doneAt = n.prev.doneAt; n.nextReview = n.prev.nextReview; n.reviewIdx = n.prev.reviewIdx;
+      n.prev = null;
     }else{
+      // 控えが無い古いデータ向けの後始末
       n.doneAt = null;
       if(reviewOn(n)){ n.reviewIdx = Math.max(0, (n.reviewIdx||0)-1); n.nextReview = dayKey(); }
     }
@@ -782,6 +790,7 @@
     // 参考書のスキャンは学習モードのフォルダの中でだけ
     $('btnScan').classList.toggle('hidden', !studyOn(browseId));
     $('btnIcs').classList.toggle('hidden', !studyOn(browseId));
+    $('btnUp').classList.toggle('hidden', !browseId);
   }
   function renderCrumb(){
     const c = $('crumb'); c.innerHTML = '';
@@ -1071,6 +1080,10 @@
   function closeForm(){ $('form').classList.add('hidden'); $('form').innerHTML=''; }
 
   $('recHead').onclick   = () => { openRec = !openRec; closeForm(); renderTree(); };
+  $('btnUp').onclick     = () => {
+    browseId = (tree[browseId] && tree[browseId].parent) || null;
+    selId = null; closeForm(); renderTree();
+  };
   $('btnAdd').onclick    = () => openForm('add', null);
   $('btnDecide').onclick = () => {
     if(!selId) return;
