@@ -129,6 +129,14 @@
   .form .chk{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--fg);cursor:pointer}
   .form .chk input{accent-color:var(--work);width:16px;height:16px;margin:0}
 
+  /* ---- ノイズ ---- */
+  .noise{display:flex;align-items:center;gap:10px;width:100%;background:var(--card2);
+    border-radius:12px;padding:8px 12px}
+  .noise button.play{background:none;border:0;font-size:20px;padding:4px 6px;flex:none;line-height:1;opacity:.55}
+  .noise button.play.on{opacity:1}
+  .noise select{background:none;border:0;color:var(--fg);font:inherit;font-size:13px;padding:4px 2px;flex:none}
+  .noise input[type=range]{flex:1;accent-color:var(--work);min-width:60px}
+
   /* ---- お知らせ ---- */
   .notice{background:var(--card);border:1px solid var(--idling);border-radius:14px;padding:14px 16px;
     display:flex;flex-direction:column;gap:10px;font-size:13px;line-height:1.6}
@@ -245,6 +253,16 @@
 
     <div id="actions" class="actions"></div>
 
+    <div class="noise">
+      <button class="play" id="noiseBtn" title="ノイズ再生">🔈</button>
+      <select id="noiseKind">
+        <option value="brown">ブラウンノイズ</option>
+        <option value="pink">ピンクノイズ</option>
+        <option value="white">ホワイトノイズ</option>
+      </select>
+      <input type="range" id="noiseVol" min="0" max="100" step="1">
+    </div>
+
     <div id="choice" class="choice hidden">
       <p><strong id="choiceTitle">1分たちました。</strong>どうする？</p>
       <div class="actions">
@@ -275,6 +293,7 @@
       <div class="rec-actions">
         <button class="sm" id="btnAdd">＋ 追加</button>
         <button class="sm hidden" id="btnScan">📷 参考書</button>
+        <button class="sm hidden" id="btnIcs">📅 カレンダーへ</button>
         <button class="sm primary" id="btnDecide">決定</button>
         <button class="sm ghost" id="btnUnlock">選択解除</button>
       </div>
@@ -340,6 +359,14 @@
         <span>復習の周期（既定）<div class="desc">学習モードのフォルダで使う日数。フォルダごとに上書き可</div></span>
         <span><input id="cfgSteps" type="text" maxlength="30" placeholder="1,3,7,14"></span>
       </label>
+      <label class="field">
+        <span>復習の予定時刻<div class="desc">カレンダーに書き出すときの時刻</div></span>
+        <span><input id="cfgReviewHour" type="number" min="0" max="23" step="1"> 時</span>
+      </label>
+      <label class="field"><span>作業を始めたらノイズを鳴らす</span>
+        <span class="switch"><input id="cfgNoiseAuto" type="checkbox"><span></span></span></label>
+      <label class="field"><span>休憩中もノイズを続ける</span>
+        <span class="switch"><input id="cfgNoiseInRest" type="checkbox"><span></span></span></label>
       <label class="field"><span>通知音</span>
         <span class="switch"><input id="cfgSound" type="checkbox"><span></span></span></label>
       <label class="field"><span>デスクトップ通知<div class="desc">ブラウザの許可が必要</div></span>
@@ -394,7 +421,8 @@
 
   const DEFAULT_CFG = {
     idlingMin:1, autoSec:15, checkinMin:0,
-    steps:'1,3,7,14',
+    steps:'1,3,7,14', reviewHour:9,
+    noiseKind:'brown', noiseVol:35, noiseAuto:false, noiseInRest:false,
     sound:true, notify:false, wake:false, hideRec:false
   };
 
@@ -500,6 +528,30 @@
     return stepList();
   };
   const reviewOn = n => n.type==='task' && n.review && studyOn(n.parent);
+  // 学習モードのフォルダでは終了日を「試験日」として扱う
+  const examOf = id => {
+    const p = pathOf(id);
+    for(let i=p.length-1;i>=0;i--) if(p[i].study && p[i].endDate) return p[i].endDate;
+    return null;
+  };
+  const autoOf = id => {
+    const p = pathOf(id);
+    for(let i=p.length-1;i>=0;i--) if(p[i].study) return p[i].autoSteps !== false;
+    return true;
+  };
+  // 標準の忘却曲線。ただし試験までの残り日数の半分は超えない
+  // （試験が近づくほど自動的に間隔が詰まり、必ず試験前にもう一度復習が入る）
+  function nextReviewOf(task){
+    const steps = stepsFor(task.id);
+    let interval = steps[Math.min(task.reviewIdx||0, steps.length-1)];
+    const exam = examOf(task.id);
+    if(exam && autoOf(task.id)){
+      const left = diffDays(exam, dayKey());
+      if(left <= 0) return null;                       // 試験が終わっている
+      interval = Math.max(1, Math.min(interval, Math.floor(left/2)));
+    }
+    return dayKey(addDays(new Date(), interval));
+  }
 
   function isDone(n){
     if(n.type!=='task' || !n.doneAt) return false;
@@ -525,10 +577,8 @@
     if(on){
       n.doneAt = dayKey();
       if(reviewOn(n)){
-        const steps = stepsFor(n.id);
-        const idx = Math.min(n.reviewIdx||0, steps.length-1);
-        n.nextReview = dayKey(addDays(new Date(), steps[idx]));
-        n.reviewIdx = Math.min((n.reviewIdx||0)+1, steps.length-1);
+        n.nextReview = nextReviewOf(n);
+        n.reviewIdx = Math.min((n.reviewIdx||0)+1, stepsFor(n.id).length-1);
       }
     }else{
       n.doneAt = null;
@@ -582,6 +632,8 @@
     st.mode = mode;
     st.segStart = Date.now();
     if(mode===CHOICE) st.choiceStart = Date.now();
+    if(mode===REST && !cfg.noiseInRest) noiseStop();
+    else if(mode===WORK && cfg.noiseAuto && !noisePlaying) noisePlay();
     render(); updateWakeLock();
   }
   function startSession(){
@@ -591,6 +643,7 @@
     st.sessionStart = Date.now(); st.counted = false;
     lastFlush = Date.now();
     beep('start');
+    if(cfg.noiseAuto) noisePlay();   // ボタン操作の流れで鳴らす（iOS の自動再生制限を避ける）
     goto(IDLING);
   }
   function finishSession(){
@@ -606,6 +659,7 @@
       save(K_LOG, logs); save(K_REC, records);
     }
     st.mode = IDLE; st.sessionWork = 0; st.sessionRest = 0;
+    noiseStop();
     render(); renderStats(); renderTree(); updateWakeLock();
   }
 
@@ -727,6 +781,7 @@
     $('btnDecide').disabled = !selId;
     // 参考書のスキャンは学習モードのフォルダの中でだけ
     $('btnScan').classList.toggle('hidden', !studyOn(browseId));
+    $('btnIcs').classList.toggle('hidden', !studyOn(browseId));
   }
   function renderCrumb(){
     const c = $('crumb'); c.innerHTML = '';
@@ -799,8 +854,13 @@
 
       if(n.type==='folder'){
         const c = taskCount(n.id);
-        const period = n.startDate || n.endDate
-          ? `${(n.startDate||'').slice(5).replace('-','/')}〜${(n.endDate||'').slice(5).replace('-','/')}　` : '';
+        let period = '';
+        if(n.study && n.endDate){
+          const left = diffDays(n.endDate, today);
+          period = (left > 0 ? `試験まで あと${left}日` : left === 0 ? '試験は今日' : '試験は終了') + '　';
+        }else if(n.startDate || n.endDate){
+          period = `${(n.startDate||'').slice(5).replace('-','/')}〜${(n.endDate||'').slice(5).replace('-','/')}　`;
+        }
         const book = n.isbn ? `${n.author ? n.author+'　' : ''}` : '';
         meta.textContent = `${book}${period}タスク ${c.done}/${c.total}　累計 ${humanMin(total)}`;
         body.append(meta);
@@ -875,17 +935,39 @@
     const sChk = document.createElement('input'); sChk.type='checkbox';
     sChk.checked = !!(node && node.study);
     sRow.append(sChk, document.createTextNode('資格・学習モード（忘却曲線で復習リマインド）'));
+
+    const aRow = document.createElement('label'); aRow.className='chk';
+    const aChk = document.createElement('input'); aChk.type='checkbox';
+    aChk.checked = !node || node.autoSteps !== false;
+    aRow.append(aChk, document.createTextNode('試験日から復習の間隔を自動調整する'));
+
     const sStepRow = document.createElement('div'); sStepRow.className='r';
     const sStepLab = document.createElement('label'); sStepLab.textContent='復習の周期';
     const sStep = document.createElement('input'); sStep.type='text'; sStep.maxLength=30;
     sStep.placeholder = `既定 ${stepList().join(', ')} 日後`;
     sStep.value = node && node.steps || '';
     sStepRow.append(sStepLab, sStep);
-    const syncStudy = () => sStepRow.classList.toggle('hidden', !sChk.checked);
+
+    const hint = document.createElement('div');
+    hint.style.cssText = 'font-size:11px;color:var(--fg-dim);line-height:1.6';
+
+    const syncStudy = () => {
+      const on = sChk.checked;
+      // 学習モードでは終了日を「試験日」として使う
+      dl.textContent = on ? '試験日' : '期間';
+      ds.classList.toggle('hidden', on);
+      aRow.classList.toggle('hidden', !on);
+      sStepRow.classList.toggle('hidden', !on);
+      hint.classList.toggle('hidden', !on);
+      hint.textContent = aChk.checked
+        ? '上の周期で復習しつつ、試験までの残り日数の半分を超えない範囲に自動で詰めます。'
+        : '上の周期をそのまま使います。';
+    };
     sChk.onchange = syncStudy;
+    aChk.onchange = syncStudy;
     syncStudy();
 
-    fBox.append(sw, dr, sRow, sStepRow);
+    fBox.append(sw, dr, sRow, aRow, sStepRow, hint);
 
     // --- タスク用 ---
     const tBox = document.createElement('div');
@@ -934,6 +1016,7 @@
         startDate: type==='folder' ? (ds.value||null) : null,
         endDate:   type==='folder' ? (de.value||null) : null,
         study:     type==='folder' ? sChk.checked : false,
+        autoSteps: type==='folder' ? aChk.checked : true,
         steps:     type==='folder' && sChk.checked ? (parseSteps(sStep.value) || []).join(',') : '',
         planMin:   type==='task' ? Number(plan.value)||0 : 0,
         repeat:    type==='task' ? rep.value : 'none',
@@ -995,6 +1078,163 @@
     openRec = false; closeForm(); renderTree(); render();
   };
   $('btnUnlock').onclick = () => { ui.lockedId=null; selId=null; save(K_UI, ui); renderTree(); render(); };
+
+  // ===== 復習予定をカレンダーへ（.ics） =====
+  // PWA は端末内で通知を予約できないので、カレンダーの予定として渡し、
+  // iOS 標準の通知を鳴らしてもらう。
+  const icsStamp = d => d.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
+  const icsEsc = s => String(s).replace(/([,;\\])/g,'\\$1').replace(/\n/g,'\\n');
+
+  function buildIcs(rootId){
+    const ids = descendants(rootId);
+    const today = dayKey();
+    const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//awapomo//review//JP','CALSCALE:GREGORIAN'];
+    const now = icsStamp(new Date());
+    let count = 0;
+
+    const event = (uid, dayStr, summary, desc, minutes) => {
+      const start = parseDay(dayStr); start.setHours(cfg.reviewHour, 0, 0, 0);
+      const end = new Date(start.getTime() + minutes*60000);
+      lines.push('BEGIN:VEVENT', `UID:${uid}@awapomo`, `DTSTAMP:${now}`,
+        `DTSTART:${icsStamp(start)}`, `DTEND:${icsStamp(end)}`,
+        `SUMMARY:${icsEsc(summary)}`, `DESCRIPTION:${icsEsc(desc)}`,
+        'BEGIN:VALARM', 'TRIGGER:-PT0M', 'ACTION:DISPLAY', `DESCRIPTION:${icsEsc(summary)}`,
+        'END:VALARM', 'END:VEVENT');
+      count++;
+    };
+
+    Object.values(tree).forEach(n => {
+      if(!ids.has(n.id) || !reviewOn(n) || !n.nextReview) return;
+      if(diffDays(n.nextReview, today) < 0) return;                 // 過ぎた分は入れない
+      event(`rv-${n.id}-${n.nextReview}`, n.nextReview,
+        `復習: ${n.name}`, pathOf(n.id).slice(0,-1).map(x=>x.name).join(' / '), 30);
+    });
+
+    const root = tree[rootId];
+    if(root && root.study && root.endDate && diffDays(root.endDate, today) >= 0){
+      event(`exam-${root.id}`, root.endDate, `試験日: ${root.name}`, '', 60);
+    }
+
+    lines.push('END:VCALENDAR');
+    return { text: lines.join('\r\n'), count };
+  }
+
+  async function exportIcs(){
+    const rootId = pathOf(browseId).find(n => n.study) ? pathOf(browseId).filter(n => n.study)[0].id : browseId;
+    const { text, count } = buildIcs(rootId);
+    if(!count){ alert('予定がありません。タスクに「忘却曲線で復習する」を設定してください。'); return; }
+    const name = `awapomo-review-${dayKey()}.ics`;
+    try{
+      const file = new File([text], name, { type:'text/calendar' });
+      if(navigator.canShare && navigator.canShare({ files:[file] })){
+        await navigator.share({ files:[file], title:'復習の予定' });
+        return;
+      }
+    }catch(e){ if(e && e.name === 'AbortError') return; }
+    const url = URL.createObjectURL(new Blob([text], { type:'text/calendar' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = name; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  $('btnIcs').onclick = () => exportIcs();
+
+  // ===== 作業用ノイズ =====
+  // 生成した音を WAV にして <audio> でループ再生する。
+  // Web Audio を鳴らしっぱなしにするより、iOS でバックグラウンドに強く、
+  // ロック画面の再生コントロールにも乗る。
+  function toWav(samples, rate){
+    const n = samples.length, buf = new ArrayBuffer(44 + n*2), v = new DataView(buf);
+    const w = (o,s) => { for(let i=0;i<s.length;i++) v.setUint8(o+i, s.charCodeAt(i)); };
+    w(0,'RIFF'); v.setUint32(4, 36+n*2, true); w(8,'WAVE'); w(12,'fmt ');
+    v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+    v.setUint32(24,rate,true); v.setUint32(28,rate*2,true); v.setUint16(32,2,true); v.setUint16(34,16,true);
+    w(36,'data'); v.setUint32(40, n*2, true);
+    for(let i=0, o=44; i<n; i++, o+=2){
+      const s = Math.max(-1, Math.min(1, samples[i]));
+      v.setInt16(o, s<0 ? s*0x8000 : s*0x7fff, true);
+    }
+    return new Blob([buf], { type:'audio/wav' });
+  }
+
+  function makeNoise(kind, sec=20, rate=44100){
+    const n = sec*rate, out = new Float32Array(n);
+    if(kind==='white'){
+      for(let i=0;i<n;i++) out[i] = (Math.random()*2-1) * 0.35;
+    }else if(kind==='pink'){
+      let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+      for(let i=0;i<n;i++){
+        const wn = Math.random()*2-1;
+        b0=0.99886*b0+wn*0.0555179; b1=0.99332*b1+wn*0.0750759; b2=0.96900*b2+wn*0.1538520;
+        b3=0.86650*b3+wn*0.3104856; b4=0.55000*b4+wn*0.5329522; b5=-0.7616*b5-wn*0.0168980;
+        out[i] = (b0+b1+b2+b3+b4+b5+b6+wn*0.5362) * 0.09;
+        b6 = wn*0.115926;
+      }
+    }else{  // brown
+      let last = 0;
+      for(let i=0;i<n;i++){
+        const wn = Math.random()*2-1;
+        last = (last + 0.02*wn) / 1.02;
+        out[i] = last * 3.2;
+      }
+    }
+    // 継ぎ目が鳴らないように、末尾を先頭へクロスフェードしてから切り落とす
+    const cf = Math.min(Math.floor(rate*0.5), n>>2);
+    for(let i=0;i<cf;i++){
+      const t = i/cf;
+      out[i] = out[i]*t + out[n-cf+i]*(1-t);
+    }
+    return toWav(out.subarray(0, n-cf), rate);
+  }
+
+  const noiseUrls = {};
+  let noiseEl = null, noisePlaying = false;
+
+  function noiseAudio(){
+    if(!noiseEl){
+      noiseEl = new Audio();
+      noiseEl.loop = true;
+      noiseEl.preload = 'auto';
+      noiseEl.addEventListener('pause', () => { noisePlaying = false; renderNoise(); });
+      noiseEl.addEventListener('play',  () => { noisePlaying = true;  renderNoise(); });
+    }
+    return noiseEl;
+  }
+
+  async function noisePlay(){
+    const kind = cfg.noiseKind;
+    if(!noiseUrls[kind]) noiseUrls[kind] = URL.createObjectURL(makeNoise(kind));
+    const a = noiseAudio();
+    if(a.dataset.kind !== kind){ a.src = noiseUrls[kind]; a.dataset.kind = kind; }
+    a.volume = cfg.noiseVol/100;
+    try{
+      await a.play();
+      if('mediaSession' in navigator){
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: { brown:'ブラウンノイズ', pink:'ピンクノイズ', white:'ホワイトノイズ' }[kind],
+          artist: 'あわポモ風タイマー'
+        });
+        navigator.mediaSession.setActionHandler('pause', noiseStop);
+        navigator.mediaSession.setActionHandler('play', noisePlay);
+      }
+    }catch{ noisePlaying = false; renderNoise(); }
+  }
+  function noiseStop(){ if(noiseEl) noiseEl.pause(); }
+
+  function renderNoise(){
+    $('noiseBtn').textContent = noisePlaying ? '🔊' : '🔈';
+    $('noiseBtn').classList.toggle('on', noisePlaying);
+  }
+
+  $('noiseBtn').onclick = () => { noisePlaying ? noiseStop() : noisePlay(); };
+  $('noiseKind').onchange = () => {
+    cfg.noiseKind = $('noiseKind').value; save(K_CFG, cfg);
+    if(noisePlaying) noisePlay();
+  };
+  $('noiseVol').oninput = () => {
+    cfg.noiseVol = Number($('noiseVol').value);
+    if(noiseEl) noiseEl.volume = cfg.noiseVol/100;
+  };
+  $('noiseVol').onchange = () => save(K_CFG, cfg);
 
   // ===== 参考書のバーコード登録 =====
   const isbnOk = s => {
@@ -1434,6 +1674,7 @@
   // ===== 設定 =====
   function bindSettings(){
     const map = { cfgIdling:'idlingMin', cfgAuto:'autoSec', cfgCheckin:'checkinMin', cfgSteps:'steps',
+                  cfgReviewHour:'reviewHour', cfgNoiseAuto:'noiseAuto', cfgNoiseInRest:'noiseInRest',
                   cfgSound:'sound', cfgNotify:'notify', cfgWake:'wake', cfgHideRec:'hideRec' };
     for(const [id, key] of Object.entries(map)){
       const node = $(id);
@@ -1511,6 +1752,9 @@
   });
 
   bindSettings();
+  $('noiseKind').value = cfg.noiseKind;
+  $('noiseVol').value  = cfg.noiseVol;
+  renderNoise();
   setView(ui.view || 'bar');
   render();
   renderTree();
