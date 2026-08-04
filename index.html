@@ -28,13 +28,58 @@
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic UI",Meiryo,sans-serif;
     -webkit-font-smoothing:antialiased;
     padding:calc(16px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right))
-            calc(48px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+            calc(96px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
     touch-action:manipulation;
     overscroll-behavior-y:contain;
   }
   button,.row,.due-list li,.cal .cell,.tabs button{-webkit-user-select:none;user-select:none}
   .app{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
   h1{font-size:15px;font-weight:600;letter-spacing:.04em;color:var(--fg-dim);margin:4px 0 0;text-align:center}
+  .view{display:flex;flex-direction:column;gap:14px}
+
+  /* ---- タブバー ---- */
+  .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;
+    background:color-mix(in srgb, var(--card) 88%, transparent);
+    -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+    border-top:1px solid var(--line);
+    padding-bottom:env(safe-area-inset-bottom)}
+  .tabbar button{flex:1;background:none;border:0;border-radius:0;padding:9px 4px 10px;
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+    font-size:10px;font-weight:500;color:var(--fg-dim)}
+  .tabbar button span{font-size:18px;line-height:1;opacity:.5}
+  .tabbar button.on{color:var(--work)}
+  .tabbar button.on span{filter:none;opacity:1}
+
+  /* ---- 実行中のタイマー ---- */
+  .minibar{width:100%;display:flex;align-items:center;gap:10px;background:var(--card);
+    border:1px solid var(--work);border-radius:12px;padding:10px 14px;font-size:13px;text-align:left}
+  .minibar .dot{width:8px;height:8px;border-radius:50%;background:var(--work);flex:none;
+    animation:breathe 2.4s ease-in-out infinite}
+  .minibar .t{font-variant-numeric:tabular-nums;font-weight:600;flex:none}
+  .minibar .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg-dim)}
+  .minibar .go{flex:none;color:var(--fg-dim);font-size:12px}
+
+  /* ---- 今日 ---- */
+  .today-sect{margin-bottom:18px}
+  .today-sect:last-child{margin-bottom:0}
+  .today-sect > h2{font-size:12px;font-weight:600;color:var(--fg-dim);letter-spacing:.06em;
+    margin:0 0 9px;display:flex;align-items:center;gap:7px}
+  .today-sect > h2 b{background:var(--line);color:var(--fg-dim);border-radius:6px;padding:1px 6px;font-size:10px}
+  .today-sect.late > h2{color:var(--work)}
+  .today-sect.late > h2 b{background:var(--work);color:#fff}
+  .tlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+  .tlist li{display:flex;align-items:center;gap:10px;background:var(--card2);border-radius:11px;
+    padding:11px 12px;border-left:3px solid transparent}
+  .tlist input[type=checkbox]{width:19px;height:19px;accent-color:var(--rest);flex:none;margin:0}
+  .tlist .body{flex:1;min-width:0;cursor:pointer}
+  .tlist .nm{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tlist .meta{font-size:11px;color:var(--fg-dim);margin-top:3px;display:flex;gap:7px;flex-wrap:wrap}
+  .tlist .play{flex:none;background:none;border:0;color:var(--work);font-size:17px;padding:5px 7px;border-radius:9px}
+  .tlist .empty{font-size:13px;color:var(--fg-dim);text-align:center;padding:18px 4px;line-height:1.7}
+  .chip{font-size:10px;font-weight:700;border-radius:5px;padding:2px 5px;background:var(--line);color:var(--fg-dim)}
+  .chip.due{background:var(--work);color:#fff}
+  .chip.rv{background:var(--idling);color:#3a2c05}
+  .fold{background:none;border:0;color:var(--fg-dim);font-size:12px;padding:6px 0;text-align:left}
   .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
   .sect-title{font-size:12px;color:var(--fg-dim);letter-spacing:.08em;margin:0 0 12px}
   .hidden{display:none !important}
@@ -86,13 +131,11 @@
 
   /* ---- 作業記録 ---- */
   .rec{padding:0;overflow:hidden}
-  .rec-head{width:100%;display:flex;align-items:center;gap:10px;padding:15px 18px;background:none;
-    border:0;border-radius:0;text-align:left;font-weight:500;font-size:14px}
+  .rec-head{width:100%;display:flex;align-items:center;gap:10px;padding:14px 18px 0;
+    font-weight:500;font-size:13px}
   .rec-head .cur{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .rec-head .cur.none{color:var(--fg-dim)}
-  .rec-head .chev{color:var(--fg-dim);transition:transform .2s}
-  .rec.open .chev.a{transform:rotate(90deg)}
-  .rec-body{padding:0 18px 18px;display:flex;flex-direction:column;gap:12px}
+  .rec-body{padding:14px 18px 18px;display:flex;flex-direction:column;gap:12px}
   .crumb{display:flex;flex-wrap:wrap;gap:2px;align-items:center;font-size:12px;color:var(--fg-dim)}
   .crumb button{background:var(--card2);border:1px solid var(--line);padding:4px 9px;font-size:12px;
     font-weight:500;color:var(--fg-dim);border-radius:7px}
@@ -225,17 +268,36 @@
 </head>
 <body>
 <div class="app">
-  <h1>あわポモ風タイマー</h1>
+  <button class="minibar hidden" id="miniBar">
+    <span class="dot" id="miniDot"></span>
+    <span class="t" id="miniTime">0:00</span>
+    <span class="n" id="miniName"></span>
+    <span class="go">開く ›</span>
+  </button>
 
-  <div class="notice hidden" id="backupNote">
-    <div id="backupNoteText"></div>
-    <div class="acts">
-      <button class="sm primary" id="backupNow">バックアップする</button>
-      <button class="sm ghost" id="backupLater">あとで</button>
+  <!-- ============ 今日 ============ -->
+  <div class="view" id="viewToday">
+    <h1>今日</h1>
+
+    <div class="notice hidden" id="backupNote">
+      <div id="backupNoteText"></div>
+      <div class="acts">
+        <button class="sm primary" id="backupNow">バックアップする</button>
+        <button class="sm ghost" id="backupLater">あとで</button>
+      </div>
     </div>
+
+    <section class="card" id="todayCard">
+      <div id="todaySections"></div>
+      <div class="rec-actions" style="margin-top:14px">
+        <button class="sm" id="btnQuickAdd">＋ タスクを追加</button>
+      </div>
+    </section>
   </div>
 
   <!-- ============ タイマー ============ -->
+  <div class="view hidden" id="viewTimer">
+  <h1>タイマー</h1>
   <section class="card timer">
     <input id="taskInput" class="task-input" type="text" maxlength="60" placeholder="いまから何をやる？（任意）">
     <div id="taskView" class="task-view hidden"></div>
@@ -274,20 +336,16 @@
     </div>
   </section>
 
-  <!-- ============ 今日の復習 ============ -->
-  <section class="card hidden" id="dueCard">
-    <p class="sect-title">今日の復習</p>
-    <ul class="due-list" id="dueList"></ul>
-  </section>
+  </div>
 
-  <!-- ============ 作業記録 ============ -->
-  <section class="card rec" id="recCard">
-    <button class="rec-head" id="recHead">
-      <span class="chev a">›</span>
-      <span class="cur none" id="recCur">作業記録：未選択</span>
-      <span class="chev">⌄</span>
-    </button>
-    <div class="rec-body hidden" id="recBody">
+  <!-- ============ 一覧 ============ -->
+  <div class="view hidden" id="viewList">
+  <h1>一覧</h1>
+  <section class="card rec open" id="recCard">
+    <div class="rec-head">
+      <span class="cur none" id="recCur">計測対象：未選択</span>
+    </div>
+    <div class="rec-body" id="recBody">
       <div class="crumb" id="crumb"></div>
       <ul class="tree" id="tree"></ul>
       <div class="form hidden" id="form"></div>
@@ -302,7 +360,11 @@
     </div>
   </section>
 
-  <!-- ============ ダッシュボード ============ -->
+  </div>
+
+  <!-- ============ 記録 ============ -->
+  <div class="view hidden" id="viewLog">
+  <h1>記録</h1>
   <section class="card">
     <p class="sect-title">ダッシュボード</p>
     <div class="stat-row">
@@ -375,7 +437,7 @@
         <span class="switch"><input id="cfgNotify" type="checkbox"><span></span></span></label>
       <label class="field"><span>画面を消灯させない<div class="desc">対応ブラウザのみ</div></span>
         <span class="switch"><input id="cfgWake" type="checkbox"><span></span></span></label>
-      <label class="field"><span>作業記録タブを非表示<div class="desc">時間だけ測る従来モードに戻す</div></span>
+      <label class="field"><span>学習機能を隠す<div class="desc">忘却曲線の復習と参考書スキャンを使わない</div></span>
         <span class="switch"><input id="cfgHideRec" type="checkbox"><span></span></span></label>
       <div class="field">
         <span>バックアップ<div class="desc" id="backupLabel"></div></span>
@@ -388,6 +450,20 @@
       <input type="file" id="fileInput" accept="application/json" class="hidden">
     </div>
   </details>
+
+  <footer>
+    休憩の長さは管理しません。戻りたくなったら「作業にもどる」を押してください。<br>
+    記録はこの端末のブラウザ内にのみ保存されます。
+  </footer>
+  </div>
+
+  <!-- ============ タブバー ============ -->
+  <nav class="tabbar">
+    <button data-view="today"><span>☑</span>今日</button>
+    <button data-view="timer"><span>⏱</span>タイマー</button>
+    <button data-view="list"><span>📋</span>一覧</button>
+    <button data-view="log"><span>📊</span>記録</button>
+  </nav>
 
   <!-- ============ バーコードスキャナ ============ -->
   <div class="scan hidden" id="scan">
@@ -406,10 +482,6 @@
     </div>
   </div>
 
-  <footer>
-    休憩の長さは管理しません。戻りたくなったら「作業にもどる」を押してください。<br>
-    記録はこの端末のブラウザ内にのみ保存されます。
-  </footer>
 </div>
 
 <script>
@@ -417,7 +489,8 @@
   'use strict';
 
   // ===== 保存領域 =====
-  const K_CFG='awapomo.cfg', K_REC='awapomo.records', K_LOG='awapomo.log', K_TREE='awapomo.tree', K_UI='awapomo.ui';
+  const K_CFG='awapomo.cfg', K_REC='awapomo.records', K_LOG='awapomo.log', K_TREE='awapomo.tree',
+        K_UI='awapomo.ui', K_DONE='awapomo.done';
   const CIRC = 2 * Math.PI * 116;
   const PALETTE = ['#ff7a59','#ffc857','#4cc9a7','#7aa2ff','#c792ea','#f06292','#4dd0e1','#a5d66d','#9aa4b8'];
 
@@ -435,7 +508,9 @@
   let records = load(K_REC, {});     // 'YYYY-MM-DD' -> {work, rest, sessions}
   let logs    = load(K_LOG, []);     // [{start, sec, label, nodeId}] 新しい順
   let tree    = load(K_TREE, {});    // id -> node
-  const UI_DEFAULT = { lockedId:null, byTask:false, depth:1, view:'bar', lastBackup:0, backupSnooze:0 };
+  let dones   = load(K_DONE, []);    // [{id, name, date, at}] 完了ログ（新しい順）
+  const UI_DEFAULT = { lockedId:null, byTask:false, depth:1, view:'bar', lastBackup:0, backupSnooze:0,
+                       tab:'today', showNoDate:false };
   let ui      = Object.assign({}, UI_DEFAULT, load(K_UI, {}));
 
   const $ = id => document.getElementById(id);
@@ -444,7 +519,8 @@
   const IDLE='idle', IDLING='idling', CHOICE='choice', WORK='work', REST='rest';
   let st = { mode:IDLE, segStart:0, sessionWork:0, sessionRest:0, sessionStart:0, label:'', nodeId:null, choiceStart:0, counted:false };
   let lastFlush = 0, wakeLock = null;
-  let browseId = null, selId = null, openRec = false;
+  let browseId = null, selId = null;
+  let dayStamp = null;
   let calMonth = (() => { const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d; })();
 
   // ===== 小道具 =====
@@ -555,11 +631,80 @@
     return dayKey(addDays(new Date(), interval));
   }
 
+  // ===== 繰り返し =====
+  const WD = ['日','月','火','水','木','金','土'];
+  function recurOf(n){
+    if(n.recur) return n.recur;
+    // 旧データ（repeat: daily / weekly）からの移行
+    return { freq: n.repeat==='daily' ? 'daily' : n.repeat==='weekly' ? 'weekly' : 'none',
+             every:1, days:[], monthDay:null };
+  }
+  const isRecurring = n => n.type==='task' && recurOf(n).freq !== 'none';
+  // 毎日・毎週はやり残しても翌日に持ち越さない（急かさないための自動リセット）。
+  // 毎月・毎年は家賃振込のように落とせないものが多いので、遅延として残す。
+  const carriesOver = n => ['monthly','yearly'].includes(recurOf(n).freq);
+
+  function stepDue(n, fromKey){
+    const r = recurOf(n), every = Math.max(1, r.every||1), d = parseDay(fromKey);
+    if(r.freq==='daily') return dayKey(addDays(d, every));
+    if(r.freq==='weekly'){
+      const days = (r.days && r.days.length) ? r.days : [d.getDay()];
+      for(let i=1;i<=7*every+7;i++){
+        const t = addDays(d, i);
+        if(days.includes(t.getDay())) return dayKey(t);
+      }
+      return dayKey(addDays(d, 7*every));
+    }
+    if(r.freq==='monthly'){
+      // 基準日より後で最初に来る「◯日」を探す（月末指定と、31日が無い月にも対応）
+      for(let i=0;i<=13;i++){
+        const t = new Date(d.getFullYear(), d.getMonth() + i*every, 1);
+        const last = new Date(t.getFullYear(), t.getMonth()+1, 0).getDate();
+        t.setDate(r.monthDay==='last' ? last : Math.min(Number(r.monthDay) || d.getDate(), last));
+        if(dayKey(t) > fromKey) return dayKey(t);
+      }
+      return null;
+    }
+    if(r.freq==='yearly'){
+      for(let i=0;i<=2;i++){
+        const t = new Date(d); t.setFullYear(d.getFullYear()+i);
+        if(dayKey(t) > fromKey) return dayKey(t);
+      }
+      return null;
+    }
+    return null;
+  }
+  function nextDue(n, fromKey){
+    let k = stepDue(n, fromKey || n.due || dayKey()), guard = 0;
+    while(k && diffDays(k, dayKey()) < 0 && guard++ < 500) k = stepDue(n, k);
+    return k;
+  }
+  function autoReset(){
+    let changed = false;
+    Object.values(tree).forEach(n => {
+      if(!isRecurring(n) || carriesOver(n)) return;
+      if(n.due && diffDays(n.due, dayKey()) < 0){ n.due = nextDue(n, n.due); changed = true; }
+    });
+    if(changed) save(K_TREE, tree);
+  }
+  function recurLabel(n){
+    const r = recurOf(n), e = Math.max(1, r.every||1);
+    if(r.freq==='daily')   return e===1 ? '毎日' : `${e}日ごと`;
+    if(r.freq==='weekly')  return (r.days && r.days.length ? r.days.slice().sort().map(d=>WD[d]).join('・')
+                                                          : '毎週') + (e===1 ? '' : ` ${e}週ごと`);
+    if(r.freq==='monthly') return r.monthDay==='last' ? '毎月末' : `毎月${r.monthDay||''}日`;
+    if(r.freq==='yearly')  return '毎年';
+    return '';
+  }
+  const dueLabel = key => {
+    const d = diffDays(key, dayKey());
+    return d===0 ? '今日' : d===1 ? '明日' : d===-1 ? '昨日' : d>0 ? `あと${d}日` : `${-d}日超過`;
+  };
+
   function isDone(n){
     if(n.type!=='task' || !n.doneAt) return false;
-    if(reviewOn(n))         return n.nextReview ? diffDays(n.nextReview, dayKey())>0 : true;
-    if(n.repeat==='daily')  return n.doneAt === dayKey();
-    if(n.repeat==='weekly') return weekKey(parseDay(n.doneAt)) === weekKey(new Date());
+    if(reviewOn(n))    return n.nextReview ? diffDays(n.nextReview, dayKey())>0 : true;
+    if(isRecurring(n)) return n.doneAt === dayKey();
     return true;
   }
   const isOver = n => n.type==='folder' && n.endDate && diffDays(dayKey(), n.endDate) > 0;
@@ -578,15 +723,22 @@
   function toggleDone(n, on){
     if(on){
       // 取り消せるように、進める前の状態を控えておく
-      n.prev = { doneAt:n.doneAt||null, nextReview:n.nextReview||null, reviewIdx:n.reviewIdx||0 };
+      n.prev = { doneAt:n.doneAt||null, nextReview:n.nextReview||null, reviewIdx:n.reviewIdx||0, due:n.due||null };
       n.doneAt = dayKey();
+      dones.unshift({ id:n.id, name:n.name, date:dayKey(), at:Date.now() });
+      dones = dones.slice(0, 1000); save(K_DONE, dones);
       if(reviewOn(n)){
         n.nextReview = nextReviewOf(n);
         n.reviewIdx = Math.min((n.reviewIdx||0)+1, stepsFor(n.id).length-1);
+      }else if(isRecurring(n)){
+        n.due = nextDue(n, n.due || dayKey());
       }
     }else if(n.prev){
-      n.doneAt = n.prev.doneAt; n.nextReview = n.prev.nextReview; n.reviewIdx = n.prev.reviewIdx;
+      n.doneAt = n.prev.doneAt; n.nextReview = n.prev.nextReview;
+      n.reviewIdx = n.prev.reviewIdx; n.due = n.prev.due;
       n.prev = null;
+      const i = dones.findIndex(d => d.id === n.id);
+      if(i >= 0){ dones.splice(i, 1); save(K_DONE, dones); }
     }else{
       // 控えが無い古いデータ向けの後始末
       n.doneAt = null;
@@ -749,47 +901,159 @@
     }
     document.title = st.mode===IDLE ? 'あわポモ風タイマー'
       : `${$('time').textContent} ${st.mode===REST?'☕':'⏱'} ${st.label||'あわポモ'}`;
+    renderMini();
   }
 
-  // ===== 今日の復習 =====
-  function renderDue(){
-    const due = cfg.hideRec ? [] : dueTasks();
-    $('dueCard').classList.toggle('hidden', !due.length);
-    const ul = $('dueList'); ul.innerHTML = '';
-    const today = dayKey();
-    due.forEach(n => {
-      const li = document.createElement('li');
-      const late = -diffDays(n.nextReview, today);
-      const b = document.createElement('span');
-      b.className = 'b' + (late===0 ? ' today':'');
-      b.textContent = late===0 ? '今日' : `${late}日超過`;
-      const nm = document.createElement('span'); nm.className='n'; nm.textContent = n.name;
-      const p = document.createElement('span'); p.className='p';
-      p.textContent = pathOf(n.id).slice(0,-1).map(x=>x.name).join(' / ');
-      li.append(b, nm, p);
-      li.onclick = () => {
-        ui.lockedId = n.id; save(K_UI, ui);
-        browseId = n.parent || null; selId = n.id;
-        renderTree(); render();
-        window.scrollTo({ top:0, behavior:'smooth' });
-      };
-      ul.append(li);
-    });
+  // ===== タブ =====
+  const VIEWS = { today:'viewToday', timer:'viewTimer', list:'viewList', log:'viewLog' };
+  function setTab(v){
+    if(!VIEWS[v]) v = 'today';
+    ui.tab = v; save(K_UI, ui);
+    Object.entries(VIEWS).forEach(([k,id]) => $(id).classList.toggle('hidden', k!==v));
+    document.querySelectorAll('.tabbar button').forEach(b => b.classList.toggle('on', b.dataset.view===v));
+    renderMini();
+    if(v==='today') renderToday();
+    if(v==='list')  renderTree();
+    if(v==='log')   renderStats();
+    window.scrollTo({ top:0 });
   }
+  document.querySelectorAll('.tabbar button').forEach(b => b.onclick = () => setTab(b.dataset.view));
+
+  function renderMini(){
+    const on = st.mode !== IDLE && ui.tab !== 'timer';
+    $('miniBar').classList.toggle('hidden', !on);
+    if(!on) return;
+    $('miniTime').textContent = $('time').textContent;
+    $('miniName').textContent = `${$('phase').textContent}　${st.label || ''}`;
+    $('miniDot').style.background = st.mode===REST ? 'var(--rest)'
+                                  : st.mode===IDLING ? 'var(--idling)' : 'var(--work)';
+  }
+  $('miniBar').onclick = () => setTab('timer');
+
+  // ===== 今日 =====
+  function todayItems(){
+    const today = dayKey();
+    const late = [], now = [], noDate = [];
+    Object.values(tree).forEach(n => {
+      if(n.type!=='task' || isDone(n)) return;
+      const rv = (!cfg.hideRec && reviewOn(n) && n.nextReview) ? diffDays(n.nextReview, today) : null;
+      const du = n.due ? diffDays(n.due, today) : null;
+      const vals = [rv, du].filter(v => v !== null);
+      if(!vals.length){ noDate.push({ n, left:null }); return; }
+      const left = Math.min(...vals);
+      const item = { n, left, review: rv !== null && rv <= 0 && (du === null || rv <= du) };
+      if(left < 0) late.push(item);
+      else if(left === 0) now.push(item);
+    });
+    late.sort((a,b) => a.left - b.left);
+    return { late, now, noDate };
+  }
+
+  function taskRow(item){
+    const n = item.n;
+    const li = document.createElement('li');
+    li.style.borderLeftColor = colorOf(n.id);
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.onclick = e => { e.stopPropagation(); toggleDone(n, cb.checked); renderToday(); renderTree(); renderStats(); };
+    li.append(cb);
+
+    const body = document.createElement('div'); body.className = 'body';
+    const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = n.name;
+    const meta = document.createElement('div'); meta.className = 'meta';
+    const path = pathOf(n.id).slice(0,-1).map(x => x.name).join(' / ');
+    if(path) meta.append(Object.assign(document.createElement('span'), { textContent: path }));
+    if(item.review){
+      const c = document.createElement('span'); c.className = 'chip rv'; c.textContent = '復習';
+      meta.append(c);
+    }
+    if(item.left !== null){
+      const c = document.createElement('span');
+      c.className = 'chip' + (item.left <= 0 ? ' due' : '');
+      c.textContent = item.review && n.nextReview ? dueLabel(n.nextReview) : dueLabel(n.due);
+      meta.append(c);
+    }
+    if(isRecurring(n)){
+      const c = document.createElement('span'); c.className = 'chip'; c.textContent = '🔁' + recurLabel(n);
+      meta.append(c);
+    }
+    if(n.planMin > 0){
+      const c = document.createElement('span'); c.className = 'chip'; c.textContent = `${n.planMin}分`;
+      meta.append(c);
+    }
+    body.append(nm, meta);
+    body.onclick = () => { browseId = n.parent || null; selId = n.id; setTab('list'); openForm('edit', n); };
+    li.append(body);
+
+    const play = document.createElement('button');
+    play.className = 'play'; play.textContent = '▶'; play.title = 'このタスクで計測を始める';
+    play.onclick = e => {
+      e.stopPropagation();
+      ui.lockedId = n.id; save(K_UI, ui);
+      $('taskInput').value = '';
+      setTab('timer');
+      if(st.mode === IDLE) startSession();
+      renderTree();
+    };
+    li.append(play);
+    return li;
+  }
+
+  function section(title, items, cls){
+    const box = document.createElement('div'); box.className = 'today-sect' + (cls ? ' '+cls : '');
+    const h = document.createElement('h2');
+    h.append(document.createTextNode(title));
+    const b = document.createElement('b'); b.textContent = items.length; h.append(b);
+    const ul = document.createElement('ul'); ul.className = 'tlist';
+    items.forEach(it => ul.append(taskRow(it)));
+    box.append(h, ul);
+    return box;
+  }
+
+  function renderToday(){
+    const box = $('todaySections'); box.innerHTML = '';
+    const { late, now, noDate } = todayItems();
+
+    if(late.length) box.append(section('遅れているもの', late, 'late'));
+    if(now.length)  box.append(section('今日やること', now));
+
+    if(!late.length && !now.length){
+      const p = document.createElement('div');
+      p.className = 'tlist';
+      const e = document.createElement('div'); e.className = 'empty';
+      e.textContent = Object.values(tree).some(n => n.type==='task')
+        ? '今日ぶんは片づきました。'
+        : 'タスクがまだありません。下の「＋ タスクを追加」から作れます。';
+      p.append(e); box.append(p);
+    }
+
+    if(noDate.length){
+      const wrap = document.createElement('div'); wrap.className = 'today-sect';
+      const t = document.createElement('button'); t.className = 'fold';
+      t.textContent = `${ui.showNoDate ? '▾' : '▸'} 期日なし（${noDate.length}）`;
+      t.onclick = () => { ui.showNoDate = !ui.showNoDate; save(K_UI, ui); renderToday(); };
+      wrap.append(t);
+      if(ui.showNoDate){
+        const ul = document.createElement('ul'); ul.className = 'tlist';
+        noDate.forEach(it => ul.append(taskRow(it)));
+        wrap.append(ul);
+      }
+      box.append(wrap);
+    }
+  }
+  $('btnQuickAdd').onclick = () => { setTab('list'); openForm('add', null); };
 
   // ===== 作業記録UI =====
   function renderHead(){
     const locked = ui.lockedId && tree[ui.lockedId];
-    $('recCur').textContent = locked ? `作業記録：${nameOf(ui.lockedId)}` : '作業記録：未選択';
+    $('recCur').textContent = locked ? `計測対象：${nameOf(ui.lockedId)}` : '計測対象：未選択';
     $('recCur').classList.toggle('none', !locked);
     $('recCur').style.color = locked ? colorOf(ui.lockedId) : '';
-    $('recCard').classList.toggle('open', openRec);
-    $('recBody').classList.toggle('hidden', !openRec);
-    $('recCard').classList.toggle('hidden', !!cfg.hideRec);
     $('btnDecide').disabled = !selId;
     // 参考書のスキャンは学習モードのフォルダの中でだけ
-    $('btnScan').classList.toggle('hidden', !studyOn(browseId));
-    $('btnIcs').classList.toggle('hidden', !studyOn(browseId));
+    $('btnScan').classList.toggle('hidden', cfg.hideRec || !studyOn(browseId));
+    $('btnIcs').classList.remove('hidden');
     $('btnUp').classList.toggle('hidden', !browseId);
   }
   function renderCrumb(){
@@ -811,7 +1075,7 @@
     return s;
   }
   function renderTree(){
-    renderHead(); renderCrumb(); renderDue();
+    renderHead(); renderCrumb();
     const list = $('tree'); list.innerHTML = '';
     const kids = childrenOf(browseId);
     if(!kids.length){
@@ -884,8 +1148,11 @@
         i.style.background = base >= n.planMin*60 ? 'var(--rest)' : colorOf(n.id);
         pb.append(i); body.append(pb);
       }else{
-        meta.textContent = `今日 ${humanMin(todaySec)}　累計 ${humanMin(total)}`
-          + (n.repeat && n.repeat!=='none' ? `　🔁${n.repeat==='daily'?'毎日':'毎週'}` : '');
+        const bits = [];
+        if(n.due) bits.push(`期日 ${n.due.slice(5).replace('-','/')}（${dueLabel(n.due)}）`);
+        if(isRecurring(n)) bits.push('🔁' + recurLabel(n));
+        bits.push(`累計 ${humanMin(total)}`);
+        meta.textContent = bits.join('　');
         body.append(meta);
       }
       li.append(body);
@@ -987,14 +1254,60 @@
     plan.value = node && node.planMin ? node.planMin : 0;
     const u1 = document.createElement('label'); u1.textContent='分';
     r1.append(l1, plan, u1);
+    // 期日
+    const rD = document.createElement('div'); rD.className='r';
+    const lD = document.createElement('label'); lD.textContent='期日';
+    const dueIn = document.createElement('input'); dueIn.type='date';
+    dueIn.value = node && node.due || '';
+    const clr = document.createElement('button'); clr.className='sm ghost'; clr.textContent='なし';
+    clr.onclick = () => { dueIn.value = ''; };
+    rD.append(lD, dueIn, clr);
+
+    // 繰り返し
+    const cur = node ? recurOf(node) : { freq:'none', every:1, days:[], monthDay:null };
+    let days = (cur.days || []).slice();
     const r2 = document.createElement('div'); r2.className='r';
     const l2 = document.createElement('label'); l2.textContent='繰り返し';
     const rep = document.createElement('select');
-    [['none','なし'],['daily','毎日'],['weekly','毎週']].forEach(([v,t])=>{
+    [['none','なし'],['daily','毎日'],['weekly','毎週（曜日）'],['monthly','毎月'],['yearly','毎年']].forEach(([v,t])=>{
       const o=document.createElement('option'); o.value=v; o.textContent=t; rep.append(o);
     });
-    rep.value = node && node.repeat ? node.repeat : 'none';
+    rep.value = cur.freq || 'none';
     r2.append(l2, rep);
+
+    const rEvery = document.createElement('div'); rEvery.className='r';
+    const lE = document.createElement('label'); lE.textContent='間隔';
+    const every = document.createElement('input');
+    every.type='number'; every.min='1'; every.max='99'; every.value = cur.every || 1;
+    const uE = document.createElement('label'); uE.textContent='日ごと';
+    rEvery.append(lE, every, uE);
+
+    const rDays = document.createElement('div');
+    rDays.style.cssText = 'display:flex;gap:5px';
+    WD.forEach((w,i) => {
+      const b = document.createElement('button');
+      b.className='sm'; b.textContent=w; b.style.cssText='flex:1;padding:8px 0';
+      const sync = () => b.classList.toggle('primary', days.includes(i));
+      b.onclick = () => { days.includes(i) ? days.splice(days.indexOf(i),1) : days.push(i); sync(); };
+      sync(); rDays.append(b);
+    });
+
+    const rMonth = document.createElement('div'); rMonth.className='r';
+    const lM = document.createElement('label'); lM.textContent='日にち';
+    const mDay = document.createElement('select');
+    for(let i=1;i<=31;i++){ const o=document.createElement('option'); o.value=String(i); o.textContent=`${i}日`; mDay.append(o); }
+    const oLast = document.createElement('option'); oLast.value='last'; oLast.textContent='月末'; mDay.append(oLast);
+    mDay.value = cur.monthDay ? String(cur.monthDay) : String(new Date().getDate());
+    rMonth.append(lM, mDay);
+
+    const syncRecur = () => {
+      const f = rep.value;
+      rEvery.classList.toggle('hidden', f==='none' || f==='yearly');
+      rDays.classList.toggle('hidden', f!=='weekly');
+      rMonth.classList.toggle('hidden', f!=='monthly');
+      uE.textContent = f==='weekly' ? '週ごと' : f==='monthly' ? 'か月ごと' : '日ごと';
+    };
+    rep.onchange = syncRecur;
     // 復習設定は「学習モード」のフォルダの中でだけ出す
     const parentId = mode==='edit' ? (node.parent||null) : (browseId||null);
     const inStudy = studyOn(parentId);
@@ -1002,7 +1315,8 @@
     const rv = document.createElement('input'); rv.type='checkbox'; rv.checked = !!(node && node.review);
     r3.append(rv, document.createTextNode(`忘却曲線で復習する（${stepsFor(parentId).join(', ')}日後）`));
     r3.classList.toggle('hidden', !inStudy);
-    tBox.append(r1, r2, r3);
+    tBox.append(rD, r2, rEvery, rDays, rMonth, r1, r3);
+    syncRecur();
 
     const syncSeg = () => {
       bF.classList.toggle('on', type==='folder');
@@ -1028,9 +1342,20 @@
         autoSteps: type==='folder' ? aChk.checked : true,
         steps:     type==='folder' && sChk.checked ? (parseSteps(sStep.value) || []).join(',') : '',
         planMin:   type==='task' ? Number(plan.value)||0 : 0,
-        repeat:    type==='task' ? rep.value : 'none',
+        due:       type==='task' ? (dueIn.value || null) : null,
+        recur:     type==='task' ? {
+                     freq: rep.value,
+                     every: Math.max(1, Number(every.value)||1),
+                     days: rep.value==='weekly' ? days.slice().sort() : [],
+                     monthDay: rep.value==='monthly' ? (mDay.value==='last' ? 'last' : Number(mDay.value)) : null
+                   } : { freq:'none', every:1, days:[], monthDay:null },
         review:    type==='task' ? (inStudy && rv.checked) : false
       };
+      // 繰り返しだけ決めて期日が空なら、次の該当日を自動で入れる
+      // 昨日を基準に探すので、条件に合えば「今日」が最初の期日になる
+      if(type==='task' && base.recur.freq!=='none' && !base.due){
+        base.due = nextDue({ recur: base.recur, type:'task' }, dayKey(addDays(new Date(), -1)));
+      }
       if(mode==='edit'){
         Object.assign(node, base);
         if(node.review && !node.nextReview){ node.reviewIdx = 0; node.nextReview = dayKey(); }
@@ -1079,7 +1404,6 @@
   }
   function closeForm(){ $('form').classList.add('hidden'); $('form').innerHTML=''; }
 
-  $('recHead').onclick   = () => { openRec = !openRec; closeForm(); renderTree(); };
   $('btnUp').onclick     = () => {
     browseId = (tree[browseId] && tree[browseId].parent) || null;
     selId = null; closeForm(); renderTree();
@@ -1088,7 +1412,7 @@
   $('btnDecide').onclick = () => {
     if(!selId) return;
     ui.lockedId = selId; save(K_UI, ui);
-    openRec = false; closeForm(); renderTree(); render();
+    closeForm(); renderTree(); render();
   };
   $('btnUnlock').onclick = () => { ui.lockedId=null; selId=null; save(K_UI, ui); renderTree(); render(); };
 
@@ -1105,37 +1429,53 @@
     const now = icsStamp(new Date());
     let count = 0;
 
-    const event = (uid, dayStr, summary, desc, minutes) => {
+    const event = (uid, dayStr, summary, desc, minutes, rrule) => {
       const start = parseDay(dayStr); start.setHours(cfg.reviewHour, 0, 0, 0);
       const end = new Date(start.getTime() + minutes*60000);
       lines.push('BEGIN:VEVENT', `UID:${uid}@awapomo`, `DTSTAMP:${now}`,
-        `DTSTART:${icsStamp(start)}`, `DTEND:${icsStamp(end)}`,
-        `SUMMARY:${icsEsc(summary)}`, `DESCRIPTION:${icsEsc(desc)}`,
+        `DTSTART:${icsStamp(start)}`, `DTEND:${icsStamp(end)}`);
+      if(rrule) lines.push(`RRULE:${rrule}`);
+      lines.push(`SUMMARY:${icsEsc(summary)}`, `DESCRIPTION:${icsEsc(desc)}`,
         'BEGIN:VALARM', 'TRIGGER:-PT0M', 'ACTION:DISPLAY', `DESCRIPTION:${icsEsc(summary)}`,
         'END:VALARM', 'END:VEVENT');
       count++;
     };
 
+    // 繰り返しは RRULE 1件で登録するので、以降ずっとカレンダーが通知してくれる
+    const rruleOf = n => {
+      const r = recurOf(n), e = Math.max(1, r.every||1);
+      if(r.freq==='daily')   return `FREQ=DAILY;INTERVAL=${e}`;
+      if(r.freq==='weekly')  return `FREQ=WEEKLY;INTERVAL=${e}` +
+        (r.days && r.days.length ? `;BYDAY=${r.days.map(d=>['SU','MO','TU','WE','TH','FR','SA'][d]).join(',')}` : '');
+      if(r.freq==='monthly') return `FREQ=MONTHLY;INTERVAL=${e};BYMONTHDAY=${r.monthDay==='last' ? -1 : (r.monthDay||1)}`;
+      if(r.freq==='yearly')  return `FREQ=YEARLY;INTERVAL=${e}`;
+      return null;
+    };
+
     Object.values(tree).forEach(n => {
-      if(!ids.has(n.id) || !reviewOn(n) || !n.nextReview) return;
-      if(diffDays(n.nextReview, today) < 0) return;                 // 過ぎた分は入れない
-      event(`rv-${n.id}-${n.nextReview}`, n.nextReview,
-        `復習: ${n.name}`, pathOf(n.id).slice(0,-1).map(x=>x.name).join(' / '), 30);
+      if(!ids.has(n.id) || n.type!=='task') return;
+      const path = pathOf(n.id).slice(0,-1).map(x=>x.name).join(' / ');
+      if(n.due && (isRecurring(n) || diffDays(n.due, today) >= 0)){
+        event(`task-${n.id}`, n.due, n.name, path, Math.max(15, n.planMin||30), rruleOf(n));
+      }
+      if(reviewOn(n) && n.nextReview && diffDays(n.nextReview, today) >= 0){
+        event(`rv-${n.id}-${n.nextReview}`, n.nextReview, `復習: ${n.name}`, path, 30, null);
+      }
     });
 
-    const root = tree[rootId];
-    if(root && root.study && root.endDate && diffDays(root.endDate, today) >= 0){
-      event(`exam-${root.id}`, root.endDate, `試験日: ${root.name}`, '', 60);
-    }
+    Object.values(tree).forEach(n => {
+      if(!ids.has(n.id) || n.type!=='folder' || !n.study || !n.endDate) return;
+      if(diffDays(n.endDate, today) < 0) return;
+      event(`exam-${n.id}`, n.endDate, `試験日: ${n.name}`, '', 60, null);
+    });
 
     lines.push('END:VCALENDAR');
     return { text: lines.join('\r\n'), count };
   }
 
   async function exportIcs(){
-    const rootId = pathOf(browseId).find(n => n.study) ? pathOf(browseId).filter(n => n.study)[0].id : browseId;
-    const { text, count } = buildIcs(rootId);
-    if(!count){ alert('予定がありません。タスクに「忘却曲線で復習する」を設定してください。'); return; }
+    const { text, count } = buildIcs(browseId);
+    if(!count){ alert('カレンダーに入れる予定がありません。タスクに期日か繰り返しを設定してください。'); return; }
     const name = `awapomo-review-${dayKey()}.ics`;
     try{
       const file = new File([text], name, { type:'text/calendar' });
@@ -1639,7 +1979,7 @@
   // ===== バックアップ =====
   // iPhone では共有シートが開くので、そのまま「ファイル」や iCloud Drive に保存できる
   async function exportData(){
-    const json = JSON.stringify({ v:1, exportedAt:new Date().toISOString(), cfg, records, logs, tree, ui }, null, 2);
+    const json = JSON.stringify({ v:2, exportedAt:new Date().toISOString(), cfg, records, logs, tree, ui, dones }, null, 2);
     const name = `awapomo-${dayKey()}.json`;
     let shared = false;
     try{
@@ -1700,7 +2040,7 @@
             if(p!=='granted'){ cfg.notify=false; node.checked=false; }
           }
           if(key==='wake') updateWakeLock();
-          if(key==='hideRec'){ renderHead(); renderDue(); }
+          if(key==='hideRec'){ renderHead(); renderToday(); }
         }else if(node.type==='number'){
           const v = Number(node.value);
           cfg[key] = Number.isFinite(v) ? Math.max(Number(node.min), Math.min(Number(node.max), v)) : DEFAULT_CFG[key];
@@ -1722,9 +2062,10 @@
           const d = JSON.parse(r.result);
           if(!confirm('現在のデータを読み込んだ内容で置き換えます。よろしいですか？')) return;
           if(d.cfg) cfg = Object.assign({}, DEFAULT_CFG, d.cfg);
-          records = d.records||{}; logs = d.logs||[]; tree = d.tree||{};
+          records = d.records||{}; logs = d.logs||[]; tree = d.tree||{}; dones = d.dones||[];
           ui = Object.assign({}, UI_DEFAULT, d.ui||{});
-          save(K_CFG,cfg); save(K_REC,records); save(K_LOG,logs); save(K_TREE,tree); save(K_UI,ui);
+          save(K_CFG,cfg); save(K_REC,records); save(K_LOG,logs); save(K_TREE,tree);
+          save(K_UI,ui); save(K_DONE,dones);
           location.reload();
         }catch{ alert('読み込めませんでした。'); }
       };
@@ -1769,9 +2110,18 @@
   $('noiseVol').value  = cfg.noiseVol;
   renderNoise();
   setView(ui.view || 'bar');
+  dayStamp = dayKey();
+  autoReset();              // 毎日・毎週のやり残しを次の機会へ送る
   render();
   renderTree();
   renderStats();
+  renderToday();
+  setTab(ui.tab || 'today');
+
+  // 日付がまたいだら「今日」を組み直す
+  setInterval(() => {
+    if(dayStamp !== dayKey()){ dayStamp = dayKey(); autoReset(); renderToday(); renderTree(); renderStats(); }
+  }, 60000);
 })();
 
 // ホーム画面アプリ（PWA）用。http(s) 配信時のみ有効
