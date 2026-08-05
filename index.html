@@ -997,8 +997,11 @@
       const vals = [rv, du].filter(v => v !== null);
       (vals.length && Math.min(...vals) <= 0 ? soon : rest).push(n);
     });
+    // そのほかは一覧と同じ並び（フォルダごとにまとまる）にする
+    const folderPath = n => pathOf(n.id).slice(0,-1).map(x => x.name).join(' / ');
     const byOrder = (a,b) => (a.order||0) - (b.order||0) || a.createdAt - b.createdAt;
-    soon.sort(byOrder); rest.sort(byOrder);
+    soon.sort(byOrder);
+    rest.sort((a,b) => folderPath(a).localeCompare(folderPath(b), 'ja') || byOrder(a,b));
 
     if(!soon.length && !rest.length){
       const p = document.createElement('div'); p.className = 'none';
@@ -1468,8 +1471,11 @@
           doneAt:null, reviewIdx:0,
           nextReview: base.review ? dayKey() : null }, base);
         selId = id;
+        // 登録したタスクは、そのままタイマーの計測対象にする
+        if(type==='task'){ ui.lockedId = id; save(K_UI, ui); }
       }
-      save(K_TREE, tree); closeForm(); renderTree(); renderStats();
+      save(K_TREE, tree); closeForm();
+      renderTree(); renderStats(); renderToday(); renderPicker(); render();
     };
     const cancel = document.createElement('button'); cancel.className='sm ghost';
     cancel.textContent='キャンセル'; cancel.onclick = closeForm;
