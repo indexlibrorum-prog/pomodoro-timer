@@ -1,6 +1,9 @@
 // オフラインでも起動できるようにする最小構成のサービスワーカー
-const CACHE = 'awapomo-v2';
-const ASSETS = ['./', './index.html', './manifest.json', './icon-180.png', './icon-192.png', './icon-512.png'];
+const CACHE = 'awapomo-v3';
+const ASSETS = [
+  './', './index.html', './manifest.json', './icon-180.png', './icon-192.png', './icon-512.png',
+  './audio/rain.wav', './audio/fan.wav', './audio/waves.wav', './audio/train.wav', './audio/fire.wav'
+];
 // バーコード読み取り用。重いので失敗してもインストールは止めない
 const OPTIONAL = ['./vendor/zxing-reader.js', './vendor/zxing_reader.wasm'];
 

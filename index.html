@@ -91,8 +91,13 @@
   .task-input{flex:1;min-width:0;background:var(--card2);border:1px solid var(--line);border-radius:12px;
     color:var(--fg);font:inherit;font-size:15px;padding:12px 14px;text-align:center}
   .task-input:focus{outline:2px solid var(--work);outline-offset:1px}
-  .task-view{font-size:15px;text-align:center;min-height:20px;word-break:break-word}
-  .task-view:empty::before{content:"（無題）";color:var(--fg-dim)}
+  .task-view{width:100%;display:flex;flex-direction:column;align-items:center;gap:5px;
+    background:color-mix(in srgb,var(--work) 9%,var(--card2));border:1px solid color-mix(in srgb,var(--work) 34%,var(--line));
+    border-radius:12px;padding:10px 14px;text-align:center;word-break:break-word}
+  .task-view-label{font-size:10px;color:var(--fg-dim);font-weight:700;letter-spacing:.08em}
+  .task-view-main{display:flex;align-items:center;justify-content:center;gap:8px;max-width:100%}
+  .task-view-main .dot{width:10px;height:10px;border-radius:50%;flex:none}
+  .task-view-main strong{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
   .ring{position:relative;width:260px;height:260px}
   .ring svg{width:100%;height:100%;transform:rotate(-90deg)}
@@ -187,6 +192,8 @@
   .pick-btn .dot{width:9px;height:9px;border-radius:50%;flex:none;display:block}
   .pick-btn .cv{color:var(--fg);font-size:15px;flex:none;transition:transform .2s;opacity:.7}
   .pick-btn.open{background:var(--card)}
+  .pick-btn.has-target{border-color:color-mix(in srgb,var(--work) 38%,var(--line));
+    background:color-mix(in srgb,var(--work) 7%,var(--card2))}
   .pick-btn.open .cv{transform:rotate(180deg)}
   .pick-btn:active{background:var(--card)}
   .pick{width:100%;background:var(--card2);border-radius:12px;padding:8px;max-height:44vh;overflow:auto;
@@ -197,23 +204,43 @@
   .pick button:hover{background:var(--card)}
   .pick button.on{background:var(--card);border-left-color:var(--work)}
   .pick .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+  .undo-bar{width:100%;display:flex;align-items:center;gap:12px;background:var(--card2);
+    border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px}
+  .undo-bar span{flex:1;line-height:1.45}
+  .undo-bar button{flex:none}
+  .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;
+    overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
   .pick .pt{font-size:11px;color:var(--fg-dim);flex:none;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .pick .none{font-size:13px;color:var(--fg-dim);text-align:center;padding:14px 4px;line-height:1.7}
   .pick button.sep{margin-top:6px;padding-top:12px;border-top:1px solid var(--line);border-radius:0 0 9px 9px}
 
   /* ---- ノイズ ---- */
+  .noise-stack{display:flex;flex-direction:column;gap:8px;width:100%}
   .noise{display:flex;align-items:center;gap:10px;width:100%;background:var(--card2);
     border-radius:12px;padding:8px 12px}
   .noise button.play{background:none;border:0;font-size:20px;padding:4px 6px;flex:none;line-height:1;opacity:.55}
   .noise button.play.on{opacity:1}
-  .noise select{background:none;border:0;color:var(--fg);font:inherit;font-size:13px;padding:4px 2px;flex:none}
+  .noise select{background:none;border:0;color:var(--fg);font:inherit;font-size:13px;padding:4px 2px;flex:none;max-width:145px}
   .noise input[type=range]{flex:1;accent-color:var(--work);min-width:60px}
+  .mix-switch{align-self:flex-start;display:flex;align-items:center;gap:7px;color:var(--fg-dim);
+    font-size:12px;padding:2px 6px;cursor:pointer}
+  .mix-switch input{accent-color:var(--work)}
+  .noise.mix-row{padding-block:7px}
+  .mix-plus{width:27px;text-align:center;color:var(--fg-dim);font-size:17px;flex:none}
 
   /* ---- お知らせ ---- */
   .notice{background:var(--card);border:1px solid var(--idling);border-radius:14px;padding:14px 16px;
     display:flex;flex-direction:column;gap:10px;font-size:13px;line-height:1.6}
   .notice .acts{display:flex;gap:8px}
   .notice.danger-note{border-color:#ff6b6b;color:#ff9b9b}
+  .gcal-card{display:flex;flex-direction:column;gap:10px}
+  .gcal-head{display:flex;align-items:center;gap:10px}
+  .gcal-head strong{flex:1;font-size:14px}.gcal-status{font-size:11px;color:var(--fg-dim)}
+  .gcal-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+  .gcal-list li{display:flex;gap:10px;padding:8px 10px;border-radius:9px;background:var(--card2);font-size:13px}
+  .gcal-list time{color:var(--fg-dim);font-variant-numeric:tabular-nums;flex:none}
+  .settings-body input.long{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:9px;
+    color:var(--fg);font:inherit;padding:9px 10px;text-align:left;font-size:12px}
 
   /* ---- バーコードスキャナ ---- */
   .scan{position:fixed;inset:0;z-index:50;background:#000;display:flex;flex-direction:column}
@@ -328,6 +355,12 @@
       </div>
     </div>
 
+    <section class="card gcal-card" id="googleCard">
+      <div class="gcal-head"><strong>Googleカレンダー</strong><span class="gcal-status" id="googleStatus"></span></div>
+      <ul class="gcal-list hidden" id="googleEvents"></ul>
+      <div class="rec-actions"><button class="sm" id="btnGoogleConnect">Googleに接続</button><button class="sm ghost hidden" id="btnGoogleClear">切断</button></div>
+    </section>
+
     <section class="card" id="todayCard">
       <div id="todaySections"></div>
       <div class="rec-actions" style="margin-top:14px">
@@ -340,13 +373,16 @@
   <div class="view hidden" id="viewTimer">
   <h1>タイマー</h1>
   <section class="card timer">
-    <button class="pick-btn" id="pickBtn"><i class="dot" id="pickDot"></i><span id="pickCur">対象：未選択</span><span class="cv">▾</span></button>
+    <button class="pick-btn" id="pickBtn" aria-expanded="false" aria-controls="pickList"><i class="dot" id="pickDot" aria-hidden="true"></i><span id="pickCur">対象：未選択</span><span class="cv" aria-hidden="true">▾</span></button>
     <div class="pick hidden" id="pickList"></div>
     <div class="task-row" id="taskRow">
       <input id="taskInput" class="task-input" type="text" maxlength="60" placeholder="いまから何をやる？（任意）">
       <button class="sm" id="btnRegister">＋一覧へ</button>
     </div>
-    <div id="taskView" class="task-view hidden"></div>
+    <div id="taskView" class="task-view hidden" role="status" aria-live="polite">
+      <span class="task-view-label">計測中の対象</span>
+      <span class="task-view-main"><i id="taskViewDot" class="dot" aria-hidden="true"></i><strong id="taskViewName">（無題）</strong></span>
+    </div>
 
     <div id="ring" class="ring">
       <svg viewBox="0 0 260 260" aria-hidden="true">
@@ -354,22 +390,56 @@
         <circle id="bar" class="bar" cx="130" cy="130" r="116"></circle>
       </svg>
       <div class="center">
-        <div id="phase" class="phase">じゅんび</div>
-        <div id="time" class="time">1:00</div>
+        <div id="phase" class="phase" role="status" aria-live="polite">じゅんび</div>
+        <div id="time" class="time" role="timer" aria-label="残り時間 1分">1:00</div>
         <div id="sub" class="sub"></div>
       </div>
     </div>
 
     <div id="actions" class="actions"></div>
 
-    <div class="noise">
-      <button class="play" id="noiseBtn" title="ノイズ再生">🔈</button>
-      <select id="noiseKind">
-        <option value="brown">ブラウンノイズ</option>
-        <option value="pink">ピンクノイズ</option>
-        <option value="white">ホワイトノイズ</option>
-      </select>
-      <input type="range" id="noiseVol" min="0" max="100" step="1">
+    <div class="noise-stack">
+      <div class="noise">
+        <button class="play" id="noiseBtn" type="button" title="ノイズを再生" aria-label="作業用ノイズを再生" aria-pressed="false">🔈</button>
+        <label class="sr-only" for="noiseKind">メインの作業用音</label>
+        <select id="noiseKind">
+          <optgroup label="ノイズ">
+            <option value="brown">ブラウンノイズ</option>
+            <option value="pink">ピンクノイズ</option>
+            <option value="white">ホワイトノイズ</option>
+          </optgroup>
+          <optgroup label="環境音">
+            <option value="rain">雨音</option>
+            <option value="fan">換気扇・空調音</option>
+            <option value="waves">波音</option>
+            <option value="train">電車の走行音</option>
+            <option value="fire">焚き火</option>
+          </optgroup>
+        </select>
+        <label class="sr-only" for="noiseVol">メイン音量</label>
+        <input type="range" id="noiseVol" min="0" max="100" step="1" aria-valuetext="35パーセント">
+      </div>
+      <label class="mix-switch"><input type="checkbox" id="noiseMixOn"><span>もう1つ音を重ねる</span></label>
+      <div class="noise mix-row hidden" id="noiseMixRow">
+        <span class="mix-plus" aria-hidden="true">＋</span>
+        <label class="sr-only" for="noiseMixKind">重ねる作業用音</label>
+        <select id="noiseMixKind">
+          <optgroup label="ノイズ">
+            <option value="brown">ブラウンノイズ</option>
+            <option value="pink">ピンクノイズ</option>
+            <option value="white">ホワイトノイズ</option>
+          </optgroup>
+          <optgroup label="環境音">
+            <option value="rain">雨音</option>
+            <option value="fan">換気扇・空調音</option>
+            <option value="waves">波音</option>
+            <option value="train">電車の走行音</option>
+            <option value="fire">焚き火</option>
+          </optgroup>
+        </select>
+        <label class="sr-only" for="noiseMixVol">重ねる音の音量</label>
+        <input type="range" id="noiseMixVol" min="0" max="100" step="1" aria-valuetext="20パーセント">
+      </div>
     </div>
 
     <div id="choice" class="choice hidden">
@@ -379,6 +449,10 @@
         <button id="btnBreak" class="rest wide">休憩する</button>
       </div>
       <div id="choiceHint" class="hint"></div>
+    </div>
+    <div id="undoBar" class="undo-bar hidden" aria-live="polite">
+      <span id="undoText"></span>
+      <button id="btnUndo" class="sm" type="button">元に戻す</button>
     </div>
   </section>
   <footer>
@@ -498,6 +572,10 @@
         <span><input id="cfgReviewHour" type="number" min="0" max="23" step="1"> 時</span>
       </label>
 
+      <p class="set-group">Googleカレンダー</p>
+      <label class="field" for="cfgGoogleClientId"><span>OAuth Client ID<div class="desc">Google Cloudで作成したWebアプリ用Client ID。読み取り専用で使用します</div></span></label>
+      <input id="cfgGoogleClientId" class="long" type="text" placeholder="123…apps.googleusercontent.com" autocomplete="off">
+
       <p class="set-group">データ</p>
       <div class="field">
         <span>バックアップ<div class="desc" id="backupLabel"></div></span>
@@ -555,16 +633,17 @@
 
   // ===== 保存領域 =====
   const K_CFG='awapomo.cfg', K_REC='awapomo.records', K_LOG='awapomo.log', K_TREE='awapomo.tree',
-        K_UI='awapomo.ui', K_DONE='awapomo.done', K_TIMER='awapomo.timer', K_AUTOBK='awapomo.autobackup';
-  const BUILD = '2026-08-06 記録の信頼性まわりの修正';
+        K_UI='awapomo.ui', K_DONE='awapomo.done', K_TIMER='awapomo.timer', K_AUTOBK='awapomo.autobackup', K_GCAL='awapomo.gcal';
+  const BUILD = '2026-08-05 Googleカレンダー読み取り連携';
   const CIRC = 2 * Math.PI * 116;
   const PALETTE = ['#ff7a59','#ffc857','#4cc9a7','#7aa2ff','#c792ea','#f06292','#4dd0e1','#a5d66d','#9aa4b8'];
 
   const DEFAULT_CFG = {
     idlingMin:1, autoSec:15, checkinMin:0,
     steps:'1,3,7,14', reviewHour:9, trackRoot:false,
-    noiseKind:'brown', noiseVol:35, noiseAuto:false, noiseInRest:false,
-    sound:true, notify:false, wake:false, hideRec:false
+    noiseKind:'brown', noiseVol:35, noiseMixOn:false, noiseMixKind:'rain', noiseMixVol:20,
+    noiseAuto:false, noiseInRest:false,
+    sound:true, notify:false, wake:false, hideRec:false, googleClientId:''
   };
 
   const load = (k, fb) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? fb : v; } catch { return fb; } };
@@ -587,6 +666,7 @@
   let logs    = load(K_LOG, []);     // [{start, sec, label, nodeId}] 新しい順
   let tree    = load(K_TREE, {});    // id -> node
   let dones   = load(K_DONE, []);    // [{id, name, date, at}] 完了ログ（新しい順）
+  let gcal    = load(K_GCAL, { events:[], syncedAt:0 });
   const UI_DEFAULT = { lockedId:null, byTask:false, depth:1, view:'bar', lastBackup:0, backupSnooze:0,
                        tab:'today', showNoDate:false };
   let ui      = Object.assign({}, UI_DEFAULT, load(K_UI, {}));
@@ -597,6 +677,7 @@
   const IDLE='idle', IDLING='idling', CHOICE='choice', WORK='work', REST='rest';
   let st = { mode:IDLE, segStart:0, sessionWork:0, sessionRest:0, sessionStart:0, label:'', nodeId:null, choiceStart:0, counted:false };
   let lastFlush = 0, wakeLock = null;
+  let undoSession = null, undoTimer = null;
   let browseId = null, selId = null;
   let dayStamp = null;
   let calMonth = (() => { const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d; })();
@@ -911,7 +992,7 @@
       // 長時間ぶんは計上せず、そこまでの確定分だけ残してセッションを閉じる
       lastFlush = Date.now();
       st.segStart = Date.now();
-      finishSession();
+      finishSession(false);
       return;
     }
     updateWakeLock();
@@ -930,6 +1011,7 @@
     render(); updateWakeLock();
   }
   function startSession(){
+    clearUndo();
     st.nodeId = ui.lockedId && tree[ui.lockedId] ? ui.lockedId : null;
     st.label  = $('taskInput').value.trim() || (st.nodeId ? tree[st.nodeId].name : '');
     st.sessionWork = 0; st.sessionRest = 0;
@@ -939,10 +1021,43 @@
     if(cfg.noiseAuto) noisePlay();   // ボタン操作の流れで鳴らす（iOS の自動再生制限を避ける）
     goto(IDLING);
   }
-  function finishSession(){
+  function clearUndo(){
+    if(undoTimer){ clearTimeout(undoTimer); undoTimer = null; }
+    undoSession = null;
+    if($('undoBar')) $('undoBar').classList.add('hidden');
+  }
+  function offerUndo(work, recorded){
+    $('undoText').textContent = recorded
+      ? `${humanMin(work)}の作業を終了しました。`
+      : '30秒未満のため記録には残していません。';
+    $('undoBar').classList.remove('hidden');
+    undoTimer = setTimeout(clearUndo, 10000);
+  }
+  function undoFinish(){
+    if(!undoSession) return;
+    const u = undoSession;
+    clearUndo();
+    records = JSON.parse(u.records);
+    logs = JSON.parse(u.logs);
+    st = Object.assign({}, u.state, { segStart:Date.now() });
+    lastFlush = Date.now();
+    save(K_REC, records); save(K_LOG, logs); saveTimer();
+    if(u.noisePlaying) noisePlay();
+    render(); renderStats(); renderTree(); updateWakeLock();
+  }
+  function finishSession(allowUndo=true){
+    if(st.mode===IDLE) return;
+    clearUndo();
     flush();
     if(st.mode!==IDLE && st.mode!==CHOICE) endSeg();
     const work = Math.round(st.sessionWork);
+    if(allowUndo){
+      // 作業時間はそのまま保持し、終了で追加される回数とログだけを戻せる状態を取っておく。
+      undoSession = {
+        records:JSON.stringify(records), logs:JSON.stringify(logs),
+        state:Object.assign({}, st), noisePlaying
+      };
+    }
     if(work>=30){
       // 回数とログはセッションを始めた日に付ける（時間だけは暦日で分かれる）
       const r = dayRec(dayKey(new Date(st.sessionStart)));
@@ -955,7 +1070,9 @@
     saveTimer();
     noiseStop();
     render(); renderStats(); renderTree(); updateWakeLock();
+    if(allowUndo) offerUndo(work, work>=30);
   }
+  $('btnUndo').onclick = undoFinish;
 
   // ===== タイマー描画 =====
   function setRing(p, color, pulse){
@@ -977,7 +1094,10 @@
 
     renderPickerHead();
     $('taskView').classList.toggle('hidden', st.mode===IDLE);
-    $('taskView').textContent = st.label;
+    const targetName = st.nodeId ? nameOf(st.nodeId) : st.label;
+    $('taskViewName').textContent = targetName || '（無題）';
+    $('taskViewDot').style.background = st.nodeId ? colorOf(st.nodeId) : 'var(--work)';
+    $('taskView').setAttribute('aria-label', `計測中の対象 ${targetName || '無題'}`);
     $('choice').classList.toggle('hidden', st.mode!==CHOICE);
     acts.classList.toggle('hidden', st.mode===CHOICE);
     if(st.mode!==CHOICE) acts.innerHTML = '';
@@ -1037,6 +1157,8 @@
     if(st.mode!==IDLE && st.mode!==CHOICE && !st.nodeId && st.label){
       acts.append(button('この作業を一覧に登録', 'ghost sm', () => registerFromText(st.label, true)));
     }
+
+    $('time').setAttribute('aria-label', `${$('phase').textContent} ${$('time').textContent}`);
 
     document.title = st.mode===IDLE ? 'あわポモ風タイマー'
       : `${$('time').textContent} ${st.mode===REST?'☕':'⏱'} ${st.label||'あわポモ'}`;
@@ -1100,6 +1222,8 @@
     // 色は先頭のドットで示す。文字まで着色すると警告のように見えてしまう
     $('pickDot').style.background = locked ? colorOf(ui.lockedId) : 'transparent';
     $('pickBtn').classList.toggle('open', pickOpen);
+    $('pickBtn').classList.toggle('has-target', !!locked);
+    $('pickBtn').setAttribute('aria-expanded', String(pickOpen));
     // 対象が決まっていれば自由入力欄は不要
     $('taskRow').classList.toggle('hidden', st.mode !== IDLE || !!locked);
     $('pickBtn').classList.toggle('hidden', st.mode !== IDLE);
@@ -1279,6 +1403,70 @@
     return box;
   }
 
+  // ===== Googleカレンダー（読み取り専用） =====
+  let googleScriptPromise = null, googleTokenClient = null, googleAccessToken = null;
+  function loadGoogleIdentity(){
+    if(window.google?.accounts?.oauth2) return Promise.resolve();
+    if(googleScriptPromise) return googleScriptPromise;
+    googleScriptPromise = new Promise((resolve,reject) => {
+      const s=document.createElement('script'); s.src='https://accounts.google.com/gsi/client'; s.async=true;
+      s.onload=resolve; s.onerror=()=>reject(new Error('Googleログインを読み込めませんでした'));
+      document.head.append(s);
+    });
+    return googleScriptPromise;
+  }
+  function googleEventDay(e){ return e.start?.date || (e.start?.dateTime ? dayKey(new Date(e.start.dateTime)) : ''); }
+  function renderGoogleCalendar(){
+    const list=$('googleEvents'), today=dayKey(); list.innerHTML='';
+    const events=(gcal.events||[]).filter(e=>googleEventDay(e)===today && e.status!=='cancelled')
+      .sort((a,b)=>String(a.start?.dateTime||a.start?.date||'').localeCompare(String(b.start?.dateTime||b.start?.date||'')));
+    events.forEach(e=>{
+      const li=document.createElement('li'), tm=document.createElement('time'), name=document.createElement('span');
+      tm.textContent=e.start?.dateTime ? new Date(e.start.dateTime).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}) : '終日';
+      name.textContent=e.summary||'（無題）'; li.append(tm,name); list.append(li);
+    });
+    list.classList.toggle('hidden',!events.length);
+    $('googleStatus').textContent = !cfg.googleClientId ? '設定が必要'
+      : gcal.syncedAt ? `最終更新 ${new Date(gcal.syncedAt).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}${events.length?`・今日${events.length}件`:'・今日は予定なし'}`
+      : '未接続';
+    $('btnGoogleConnect').textContent=googleAccessToken?'再同期':'Googleに接続';
+    $('btnGoogleClear').classList.toggle('hidden',!googleAccessToken && !(gcal.events||[]).length);
+  }
+  async function syncGoogleCalendar(){
+    $('googleStatus').textContent='同期中…';
+    const from=new Date(); from.setDate(from.getDate()-7);
+    const to=new Date(); to.setDate(to.getDate()+90);
+    const q=new URLSearchParams({singleEvents:'true',orderBy:'startTime',timeMin:from.toISOString(),timeMax:to.toISOString(),maxResults:'1000'});
+    const res=await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?${q}`,{headers:{Authorization:`Bearer ${googleAccessToken}`}});
+    if(!res.ok) throw new Error(`Googleカレンダーの取得に失敗しました（${res.status}）`);
+    const data=await res.json();
+    gcal={events:(data.items||[]).map(e=>({id:e.id,status:e.status,summary:e.summary,start:e.start,end:e.end})),syncedAt:Date.now()};
+    save(K_GCAL,gcal); renderGoogleCalendar();
+  }
+  async function connectGoogleCalendar(){
+    if(!cfg.googleClientId){
+      setTab('log'); const d=document.querySelector('#viewLog details'); if(d) d.open=true;
+      alert('設定にGoogle OAuth Client IDを入力してください。'); return;
+    }
+    try{
+      await loadGoogleIdentity();
+      if(!googleTokenClient) googleTokenClient=google.accounts.oauth2.initTokenClient({
+        client_id:cfg.googleClientId, scope:'https://www.googleapis.com/auth/calendar.readonly',
+        callback:async r=>{ if(r.error){ $('googleStatus').textContent='接続できませんでした'; return; }
+          googleAccessToken=r.access_token;
+          try{ await syncGoogleCalendar(); }catch(e){ $('googleStatus').textContent=e.message; }
+        }
+      });
+      if(googleAccessToken) await syncGoogleCalendar(); else googleTokenClient.requestAccessToken({prompt:'consent'});
+    }catch(e){ $('googleStatus').textContent=e.message||'接続できませんでした'; }
+  }
+  $('btnGoogleConnect').onclick=connectGoogleCalendar;
+  $('btnGoogleClear').onclick=()=>{
+    if(googleAccessToken && window.google?.accounts?.oauth2) google.accounts.oauth2.revoke(googleAccessToken);
+    googleAccessToken=null; googleTokenClient=null; gcal={events:[],syncedAt:0};
+    try{localStorage.removeItem(K_GCAL);}catch{} renderGoogleCalendar();
+  };
+
   function renderToday(){
     const box = $('todaySections'); box.innerHTML = '';
     const { late, now, noDate } = todayItems();
@@ -1314,6 +1502,7 @@
       }
       box.append(wrap);
     }
+    renderGoogleCalendar();
   }
   $('btnQuickAdd').onclick = () => { setTab('list'); openForm('add', null, 'today'); };
 
@@ -1876,43 +2065,101 @@
     return toWav(out.subarray(0, n-cf), rate);
   }
 
+  const SOUND_NAMES = {
+    brown:'ブラウンノイズ', pink:'ピンクノイズ', white:'ホワイトノイズ',
+    rain:'雨音', fan:'換気扇・空調音', waves:'波音', train:'電車の走行音', fire:'焚き火'
+  };
+  const AMBIENT_URLS = {
+    rain:'audio/rain.wav', fan:'audio/fan.wav', waves:'audio/waves.wav',
+    train:'audio/train.wav', fire:'audio/fire.wav'
+  };
   const noiseUrls = {};
-  let noiseEl = null, noisePlaying = false;
+  let noiseEl = null, noiseMixEl = null, noisePlaying = false;
+
+  function noiseUrl(kind){
+    if(AMBIENT_URLS[kind]) return AMBIENT_URLS[kind];
+    if(!noiseUrls[kind]) noiseUrls[kind] = URL.createObjectURL(makeNoise(kind));
+    return noiseUrls[kind];
+  }
+
+  function setupNoiseAudio(a, kind, volume){
+    if(a.dataset.kind !== kind){ a.src = noiseUrl(kind); a.dataset.kind = kind; }
+    a.volume = volume/100;
+  }
 
   function noiseAudio(){
     if(!noiseEl){
       noiseEl = new Audio();
+      noiseEl.id = 'noiseAudio';
+      noiseEl.hidden = true;
       noiseEl.loop = true;
       noiseEl.preload = 'auto';
-      noiseEl.addEventListener('pause', () => { noisePlaying = false; renderNoise(); });
+      noiseEl.addEventListener('pause', () => {
+        if(noiseMixEl && !noiseMixEl.paused) noiseMixEl.pause();
+        noisePlaying = false; renderNoise();
+      });
       noiseEl.addEventListener('play',  () => { noisePlaying = true;  renderNoise(); });
+      document.body.append(noiseEl);
     }
     return noiseEl;
   }
 
+  function noiseMixAudio(){
+    if(!noiseMixEl){
+      noiseMixEl = new Audio();
+      noiseMixEl.id = 'noiseMixAudio';
+      noiseMixEl.hidden = true;
+      noiseMixEl.loop = true;
+      noiseMixEl.preload = 'auto';
+      document.body.append(noiseMixEl);
+    }
+    return noiseMixEl;
+  }
+
   async function noisePlay(){
     const kind = cfg.noiseKind;
-    if(!noiseUrls[kind]) noiseUrls[kind] = URL.createObjectURL(makeNoise(kind));
     const a = noiseAudio();
-    if(a.dataset.kind !== kind){ a.src = noiseUrls[kind]; a.dataset.kind = kind; }
-    a.volume = cfg.noiseVol/100;
+    setupNoiseAudio(a, kind, cfg.noiseVol);
+    let mixPromise = Promise.resolve();
+    if(cfg.noiseMixOn){
+      const b = noiseMixAudio();
+      setupNoiseAudio(b, cfg.noiseMixKind, cfg.noiseMixVol);
+      // 2つともユーザー操作の直後に play() を呼び、iOS の自動再生制限を避ける。
+      mixPromise = b.play().catch(() => { b.pause(); });
+    }else if(noiseMixEl){
+      noiseMixEl.pause();
+    }
     try{
-      await a.play();
+      const mainPromise = a.play();
+      await mainPromise;
+      await mixPromise;
       if('mediaSession' in navigator){
         navigator.mediaSession.metadata = new MediaMetadata({
-          title: { brown:'ブラウンノイズ', pink:'ピンクノイズ', white:'ホワイトノイズ' }[kind],
+          title: SOUND_NAMES[kind] + (cfg.noiseMixOn ? ` ＋ ${SOUND_NAMES[cfg.noiseMixKind]}` : ''),
           artist: 'あわポモ風タイマー'
         });
         navigator.mediaSession.setActionHandler('pause', noiseStop);
         navigator.mediaSession.setActionHandler('play', noisePlay);
       }
-    }catch{ noisePlaying = false; renderNoise(); }
+    }catch{
+      if(noiseMixEl) noiseMixEl.pause();
+      noisePlaying = false; renderNoise();
+    }
   }
-  function noiseStop(){ if(noiseEl) noiseEl.pause(); }
+  function noiseStop(){
+    if(noiseEl) noiseEl.pause();
+    if(noiseMixEl) noiseMixEl.pause();
+    noisePlaying = false; renderNoise();
+  }
 
   function renderNoise(){
     $('noiseBtn').textContent = noisePlaying ? '🔊' : '🔈';
     $('noiseBtn').classList.toggle('on', noisePlaying);
+    $('noiseBtn').setAttribute('aria-pressed', String(noisePlaying));
+    $('noiseBtn').setAttribute('aria-label', noisePlaying ? '作業用ノイズを停止' : '作業用ノイズを再生');
+    $('noiseBtn').title = noisePlaying ? 'ノイズを停止' : 'ノイズを再生';
+    $('noiseMixOn').checked = !!cfg.noiseMixOn;
+    $('noiseMixRow').classList.toggle('hidden', !cfg.noiseMixOn);
   }
 
   $('noiseBtn').onclick = () => { noisePlaying ? noiseStop() : noisePlay(); };
@@ -1922,9 +2169,25 @@
   };
   $('noiseVol').oninput = () => {
     cfg.noiseVol = Number($('noiseVol').value);
+    $('noiseVol').setAttribute('aria-valuetext', `${cfg.noiseVol}パーセント`);
     if(noiseEl) noiseEl.volume = cfg.noiseVol/100;
   };
   $('noiseVol').onchange = () => save(K_CFG, cfg);
+  $('noiseMixOn').onchange = () => {
+    cfg.noiseMixOn = $('noiseMixOn').checked; save(K_CFG, cfg);
+    if(noisePlaying) noisePlay();
+    else { if(noiseMixEl) noiseMixEl.pause(); renderNoise(); }
+  };
+  $('noiseMixKind').onchange = () => {
+    cfg.noiseMixKind = $('noiseMixKind').value; save(K_CFG, cfg);
+    if(noisePlaying) noisePlay();
+  };
+  $('noiseMixVol').oninput = () => {
+    cfg.noiseMixVol = Number($('noiseMixVol').value);
+    $('noiseMixVol').setAttribute('aria-valuetext', `${cfg.noiseMixVol}パーセント`);
+    if(noiseMixEl) noiseMixEl.volume = cfg.noiseMixVol/100;
+  };
+  $('noiseMixVol').onchange = () => save(K_CFG, cfg);
 
   // ===== 参考書のバーコード登録 =====
   const isbnOk = s => {
@@ -2422,7 +2685,7 @@
     const map = { cfgIdling:'idlingMin', cfgAuto:'autoSec', cfgCheckin:'checkinMin', cfgSteps:'steps',
                   cfgReviewHour:'reviewHour', cfgNoiseAuto:'noiseAuto', cfgNoiseInRest:'noiseInRest',
                   cfgSound:'sound', cfgNotify:'notify', cfgWake:'wake', cfgHideRec:'hideRec',
-                  cfgTrackRoot:'trackRoot' };
+                  cfgTrackRoot:'trackRoot', cfgGoogleClientId:'googleClientId' };
     for(const [id, key] of Object.entries(map)){
       const node = $(id);
       if(node.type==='checkbox') node.checked = cfg[key]; else node.value = cfg[key];
@@ -2445,6 +2708,7 @@
           if(key==='steps'){ cfg.steps = stepList().join(','); node.value = cfg.steps; }
         }
         save(K_CFG, cfg); render();
+        if(key==='googleClientId'){ googleTokenClient=null; googleAccessToken=null; renderGoogleCalendar(); }
       });
     }
     $('btnExport').onclick = () => exportData();
@@ -2521,6 +2785,11 @@
   $('buildLabel').textContent = BUILD;
   $('noiseKind').value = cfg.noiseKind;
   $('noiseVol').value  = cfg.noiseVol;
+  $('noiseVol').setAttribute('aria-valuetext', `${cfg.noiseVol}パーセント`);
+  $('noiseMixOn').checked = !!cfg.noiseMixOn;
+  $('noiseMixKind').value = cfg.noiseMixKind;
+  $('noiseMixVol').value = cfg.noiseMixVol;
+  $('noiseMixVol').setAttribute('aria-valuetext', `${cfg.noiseMixVol}パーセント`);
   renderNoise();
   setView(ui.view || 'bar');
   dayStamp = dayKey();
