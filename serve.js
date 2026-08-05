@@ -10,7 +10,8 @@ const PORT = Number(process.env.PORT) || 4173;
 const TYPES = {
   '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8',
   '.json':'application/json; charset=utf-8', '.wasm':'application/wasm',
-  '.png':'image/png', '.jpg':'image/jpeg', '.svg':'image/svg+xml', '.md':'text/markdown; charset=utf-8'
+  '.png':'image/png', '.jpg':'image/jpeg', '.svg':'image/svg+xml', '.wav':'audio/wav',
+  '.md':'text/markdown; charset=utf-8'
 };
 
 http.createServer((req, res) => {
