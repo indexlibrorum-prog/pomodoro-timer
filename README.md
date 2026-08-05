@@ -9,11 +9,15 @@
 - <https://note.com/noko_app/n/n0effd52ea016>（学習向けの管理・振り返り）
 - <https://note.com/eyemask57/n/n6e4c1c65469f>（今日タブ中心の構成・繰り返しタスク）
 
+動作の規則（データ構造・判定条件・状態遷移）は [SPEC.md](SPEC.md) にまとめてある。
+この README は使い方、SPEC.md は仕様、という切り分け。
+
 ## ファイル
 
 | ファイル | 役割 |
 | --- | --- |
 | `index.html` | アプリ本体（HTML / CSS / JS すべて内包） |
+| `SPEC.md` | 仕様書 |
 | `manifest.json` | ホーム画面アプリ（PWA）の定義 |
 | `sw.js` | オフライン起動用のサービスワーカー |
 | `icon-180/192/512.png` | アイコン |
