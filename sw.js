@@ -1,5 +1,5 @@
 // オフラインでも起動できるようにする最小構成のサービスワーカー
-const CACHE = 'awapomo-v3';
+const CACHE = 'awapomo-v4';
 const ASSETS = [
   './', './index.html', './manifest.json', './icon-180.png', './icon-192.png', './icon-512.png',
   './audio/rain.wav', './audio/fan.wav', './audio/waves.wav', './audio/train.wav', './audio/fire.wav'
