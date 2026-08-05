@@ -239,6 +239,9 @@
   .gcal-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
   .gcal-list li{display:flex;gap:10px;padding:8px 10px;border-radius:9px;background:var(--card2);font-size:13px}
   .gcal-list time{color:var(--fg-dim);font-variant-numeric:tabular-nums;flex:none}
+  .gcal-list li>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .gcal-list .gcal-use{flex:none;background:var(--card);border:1px solid var(--line);border-radius:8px;
+    color:var(--fg);font:inherit;font-size:11px;padding:5px 9px;white-space:nowrap}
   .settings-body input.long{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:9px;
     color:var(--fg);font:inherit;padding:9px 10px;text-align:left;font-size:12px}
 
@@ -1416,14 +1419,29 @@
     return googleScriptPromise;
   }
   function googleEventDay(e){ return e.start?.date || (e.start?.dateTime ? dayKey(new Date(e.start.dateTime)) : ''); }
+  function useGoogleEventForTimer(e){
+    if(st.mode!==IDLE){ alert('計測中は対象を切り替えられません。いまの計測を終了してから選んでください。'); return; }
+    const label=(e.summary||'').trim() || '（無題）';
+    ui.lockedId=null; save(K_UI,ui);
+    pickOpen=false;
+    $('taskInput').value=label;
+    setTab('timer');
+    renderTree(); render();
+    $('taskInput').focus();
+  }
   function renderGoogleCalendar(){
     const list=$('googleEvents'), today=dayKey(); list.innerHTML='';
     const events=(gcal.events||[]).filter(e=>googleEventDay(e)===today && e.status!=='cancelled')
       .sort((a,b)=>String(a.start?.dateTime||a.start?.date||'').localeCompare(String(b.start?.dateTime||b.start?.date||'')));
     events.forEach(e=>{
-      const li=document.createElement('li'), tm=document.createElement('time'), name=document.createElement('span');
+      const li=document.createElement('li'), tm=document.createElement('time'), name=document.createElement('span'), use=document.createElement('button');
       tm.textContent=e.start?.dateTime ? new Date(e.start.dateTime).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}) : '終日';
-      name.textContent=e.summary||'（無題）'; li.append(tm,name); list.append(li);
+      name.textContent=e.summary||'（無題）';
+      use.className='gcal-use'; use.type='button'; use.textContent='タイマーへ';
+      use.title=`${name.textContent}をタイマーの対象にする`;
+      use.disabled=st.mode!==IDLE;
+      use.onclick=()=>useGoogleEventForTimer(e);
+      li.append(tm,name,use); list.append(li);
     });
     list.classList.toggle('hidden',!events.length);
     $('googleStatus').textContent = !cfg.googleClientId ? '設定が必要'
