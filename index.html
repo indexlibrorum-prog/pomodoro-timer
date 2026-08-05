@@ -162,7 +162,7 @@
   .row input[type=checkbox]{width:17px;height:17px;accent-color:var(--rest);flex:none;margin:0}
   .rec-actions{display:flex;gap:8px;flex-wrap:wrap}
   .form{background:var(--card2);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
-  .form input[type=text],.form input[type=number],.form input[type=date],.form select{
+  .form input[type=text],.form input[type=number],.form input[type=date],.form input[type=time],.form select{
     background:var(--card);border:1px solid var(--line);border-radius:9px;color:var(--fg);font:inherit;font-size:14px;padding:9px 11px;width:100%}
   .form .seg{display:flex;gap:8px}
   .form .seg button{flex:1;font-size:13px;padding:9px}
@@ -518,7 +518,7 @@
   // ===== 保存領域 =====
   const K_CFG='awapomo.cfg', K_REC='awapomo.records', K_LOG='awapomo.log', K_TREE='awapomo.tree',
         K_UI='awapomo.ui', K_DONE='awapomo.done';
-  const BUILD = '2026-08-05 試験終了後の復習を止める';
+  const BUILD = '2026-08-05 期日に時刻を追加';
   const CIRC = 2 * Math.PI * 116;
   const PALETTE = ['#ff7a59','#ffc857','#4cc9a7','#7aa2ff','#c792ea','#f06292','#4dd0e1','#a5d66d','#9aa4b8'];
 
@@ -726,10 +726,13 @@
     if(r.freq==='yearly')  return '毎年';
     return '';
   }
-  const dueLabel = key => {
+  const dueLabel = (key, time) => {
     const d = diffDays(key, dayKey());
-    return d===0 ? '今日' : d===1 ? '明日' : d===-1 ? '昨日' : d>0 ? `あと${d}日` : `${-d}日超過`;
+    const base = d===0 ? '今日' : d===1 ? '明日' : d===-1 ? '昨日' : d>0 ? `あと${d}日` : `${-d}日超過`;
+    return time ? `${base} ${time}` : base;
   };
+  // 期日なし＝終日、時刻ありならその時刻順。同時刻なら並び替えは他の条件に譲る
+  const timeKey = n => n.dueTime || '';
 
   function isDone(n){
     if(n.type!=='task' || !n.doneAt) return false;
@@ -1015,7 +1018,7 @@
     const folderPath = n => pathOf(n.id).slice(0,-1).map(x => x.name).join(' / ');
     const byOrder = (a,b) => (a.order||0) - (b.order||0) || a.createdAt - b.createdAt;
     const byFolder = (a,b) => folderPath(a).localeCompare(folderPath(b), 'ja') || byOrder(a,b);
-    soon.sort(byOrder);
+    soon.sort((a,b) => timeKey(a).localeCompare(timeKey(b)) || byOrder(a,b));
     rest.sort(byFolder); done.sort(byFolder); folders.sort(byFolder);
 
     if(!soon.length && !rest.length && !done.length && !folders.length){
@@ -1060,7 +1063,7 @@
       id, type:'task', name:nm, parent:browseId||null, createdAt:Date.now(),
       order:(sibs.length ? Math.max(...sibs.map(s=>s.order||0))+1 : 0),
       color:null, startDate:null, endDate:null, study:false, autoSteps:true, steps:'',
-      planMin:0, due:null, recur:{ freq:'none', every:1, days:[], monthDay:null },
+      planMin:0, due:null, dueTime:null, recur:{ freq:'none', every:1, days:[], monthDay:null },
       review:false, doneAt:null, reviewIdx:0, nextReview:null
     };
     selId = id;
@@ -1091,7 +1094,10 @@
       if(left < 0) late.push(item);
       else if(left === 0) now.push(item);
     });
-    late.sort((a,b) => a.left - b.left);
+    // 遅れているものはより遅れている順。同じ遅れ幅・同じ今日の中では、終日→時刻順
+    const byTime = (a,b) => timeKey(a.n).localeCompare(timeKey(b.n));
+    late.sort((a,b) => a.left - b.left || byTime(a,b));
+    now.sort(byTime);
     return { late, now, noDate };
   }
 
@@ -1117,7 +1123,7 @@
     if(item.left !== null){
       const c = document.createElement('span');
       c.className = 'chip' + (item.left <= 0 ? ' due' : '');
-      c.textContent = item.review && n.nextReview ? dueLabel(n.nextReview) : dueLabel(n.due);
+      c.textContent = item.review && n.nextReview ? dueLabel(n.nextReview) : dueLabel(n.due, n.dueTime);
       meta.append(c);
     }
     if(isRecurring(n)){
@@ -1295,7 +1301,7 @@
         pb.append(i); body.append(pb);
       }else{
         const bits = [];
-        if(n.due) bits.push(`期日 ${n.due.slice(5).replace('-','/')}（${dueLabel(n.due)}）`);
+        if(n.due) bits.push(`期日 ${n.due.slice(5).replace('-','/')}${n.dueTime ? ' '+n.dueTime : ''}（${dueLabel(n.due)}）`);
         if(isRecurring(n)) bits.push('🔁' + recurLabel(n));
         bits.push(`累計 ${humanMin(total)}`);
         meta.textContent = bits.join('　');
@@ -1400,14 +1406,18 @@
     plan.value = node && node.planMin ? node.planMin : 0;
     const u1 = document.createElement('label'); u1.textContent='分';
     r1.append(l1, plan, u1);
-    // 期日
+    // 期日（時刻は任意）
     const rD = document.createElement('div'); rD.className='r';
     const lD = document.createElement('label'); lD.textContent='期日';
     const dueIn = document.createElement('input'); dueIn.type='date';
+    dueIn.style.cssText = 'flex:3;min-width:0';
     dueIn.value = node && node.due || '';
+    const timeIn = document.createElement('input'); timeIn.type='time';
+    timeIn.style.cssText = 'flex:2;min-width:0';
+    timeIn.value = node && node.dueTime || '';
     const clr = document.createElement('button'); clr.className='sm ghost'; clr.textContent='なし';
-    clr.onclick = () => { dueIn.value = ''; };
-    rD.append(lD, dueIn, clr);
+    clr.onclick = () => { dueIn.value = ''; timeIn.value = ''; };
+    rD.append(lD, dueIn, timeIn, clr);
 
     // 繰り返し
     const cur = node ? recurOf(node) : { freq:'none', every:1, days:[], monthDay:null };
@@ -1489,6 +1499,7 @@
         steps:     type==='folder' && sChk.checked ? (parseSteps(sStep.value) || []).join(',') : '',
         planMin:   type==='task' ? Number(plan.value)||0 : 0,
         due:       type==='task' ? (dueIn.value || null) : null,
+        dueTime:   type==='task' && timeIn.value ? timeIn.value : null,
         recur:     type==='task' ? {
                      freq: rep.value,
                      every: Math.max(1, Number(every.value)||1),
@@ -1497,11 +1508,12 @@
                    } : { freq:'none', every:1, days:[], monthDay:null },
         review:    type==='task' ? (inStudy && rv.checked) : false
       };
-      // 繰り返しだけ決めて期日が空なら、次の該当日を自動で入れる
+      // 繰り返しだけ決めて期日が空なら、次の該当日を自動で入れる（時刻の指定は保つ）
       // 昨日を基準に探すので、条件に合えば「今日」が最初の期日になる
       if(type==='task' && base.recur.freq!=='none' && !base.due){
         base.due = nextDue({ recur: base.recur, type:'task' }, dayKey(addDays(new Date(), -1)));
       }
+      if(!base.due) base.dueTime = null;   // 日付が無ければ時刻だけ残さない
       if(mode==='edit'){
         Object.assign(node, base);
         if(node.review && !node.nextReview){ node.reviewIdx = 0; node.nextReview = dayKey(); }
@@ -1578,8 +1590,10 @@
     const now = icsStamp(new Date());
     let count = 0;
 
-    const event = (uid, dayStr, summary, desc, minutes, rrule) => {
-      const start = parseDay(dayStr); start.setHours(cfg.reviewHour, 0, 0, 0);
+    const event = (uid, dayStr, summary, desc, minutes, rrule, timeStr) => {
+      const start = parseDay(dayStr);
+      if(timeStr){ const [hh,mm] = timeStr.split(':').map(Number); start.setHours(hh, mm, 0, 0); }
+      else start.setHours(cfg.reviewHour, 0, 0, 0);
       const end = new Date(start.getTime() + minutes*60000);
       lines.push('BEGIN:VEVENT', `UID:${uid}@awapomo`, `DTSTAMP:${now}`,
         `DTSTART:${icsStamp(start)}`, `DTEND:${icsStamp(end)}`);
@@ -1605,7 +1619,7 @@
       if(!ids.has(n.id) || n.type!=='task') return;
       const path = pathOf(n.id).slice(0,-1).map(x=>x.name).join(' / ');
       if(n.due && (isRecurring(n) || diffDays(n.due, today) >= 0)){
-        event(`task-${n.id}`, n.due, n.name, path, Math.max(15, n.planMin||30), rruleOf(n));
+        event(`task-${n.id}`, n.due, n.name, path, Math.max(15, n.planMin||30), rruleOf(n), n.dueTime);
       }
       if(reviewOn(n) && n.nextReview && diffDays(n.nextReview, today) >= 0 && !examPassed(n.id)){
         event(`rv-${n.id}-${n.nextReview}`, n.nextReview, `復習: ${n.name}`, path, 30, null);
