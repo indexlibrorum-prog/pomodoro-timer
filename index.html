@@ -167,8 +167,13 @@
   .form .seg{display:flex;gap:8px}
   .form .seg button{flex:1;font-size:13px;padding:9px}
   .form .seg button.on{background:var(--work);color:#fff;border-color:transparent}
-  .form .r{display:flex;gap:10px;align-items:center}
+  .form .r{display:flex;gap:8px;align-items:center}
   .form label{font-size:12px;color:var(--fg-dim);flex:none}
+  /* 期日は「日付＋時刻＋なし」で横幅が足りないので、ラベルを上に出して1行を丸ごと使う */
+  .form .stack{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+  .form .stack > .r{gap:6px}
+  .form .stack input[type=date]{font-size:13px;padding:9px 6px}
+  .form .stack input[type=time]{font-size:13px;padding:9px 6px}
   .form .swatches{display:flex;gap:8px;flex-wrap:wrap}
   .form .swatches i{width:26px;height:26px;border-radius:8px;cursor:pointer;border:2px solid transparent;display:block}
   .form .swatches i.on{border-color:var(--fg)}
@@ -178,9 +183,12 @@
   /* ---- タイマーの対象選択 ---- */
   .pick-btn{width:100%;display:flex;align-items:center;gap:10px;background:var(--card2);
     border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:14px;font-weight:500;text-align:left}
-  .pick-btn span:first-child{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .pick-btn .cv{color:var(--fg-dim);font-size:12px;flex:none;transition:transform .2s}
+  .pick-btn #pickCur{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pick-btn .dot{width:9px;height:9px;border-radius:50%;flex:none;display:block}
+  .pick-btn .cv{color:var(--fg);font-size:15px;flex:none;transition:transform .2s;opacity:.7}
+  .pick-btn.open{background:var(--card)}
   .pick-btn.open .cv{transform:rotate(180deg)}
+  .pick-btn:active{background:var(--card)}
   .pick{width:100%;background:var(--card2);border-radius:12px;padding:8px;max-height:44vh;overflow:auto;
     display:flex;flex-direction:column;gap:4px}
   .pick h3{font-size:11px;color:var(--fg-dim);letter-spacing:.06em;margin:8px 6px 2px;font-weight:600}
@@ -191,6 +199,7 @@
   .pick .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
   .pick .pt{font-size:11px;color:var(--fg-dim);flex:none;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .pick .none{font-size:13px;color:var(--fg-dim);text-align:center;padding:14px 4px;line-height:1.7}
+  .pick button.sep{margin-top:6px;padding-top:12px;border-top:1px solid var(--line);border-radius:0 0 9px 9px}
 
   /* ---- ノイズ ---- */
   .noise{display:flex;align-items:center;gap:10px;width:100%;background:var(--card2);
@@ -228,6 +237,7 @@
   .stat{background:var(--card2);border-radius:12px;padding:12px 10px;text-align:center}
   .stat .v{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
   .stat .k{font-size:11px;color:var(--fg-dim);margin-top:3px}
+  .stat-note{font-size:11px;color:var(--fg-dim);line-height:1.6;margin:-6px 0 14px}
   .tabs{display:flex;gap:6px;margin-bottom:12px}
   .tabs button{flex:1;font-size:13px;font-weight:500;padding:8px;border-radius:10px}
   .tabs button.on{background:var(--work);color:#fff;border-color:transparent}
@@ -273,6 +283,8 @@
   summary::before{content:"⚙ "}
   .settings-body{padding:0 20px 20px;display:flex;flex-direction:column;gap:14px}
   .field{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px}
+  .field > span:first-child{flex:1;min-width:0}
+  .field > span:last-child{flex:none;white-space:nowrap;display:flex;align-items:center;gap:6px}
   .field input[type=number],.field input[type=text]{width:96px;background:var(--card2);border:1px solid var(--line);border-radius:9px;color:var(--fg);font:inherit;padding:8px 10px;text-align:right}
   .field .desc{font-size:11px;color:var(--fg-dim);margin-top:2px}
   .switch{position:relative;width:46px;height:26px;flex:none}
@@ -282,6 +294,10 @@
   .switch input:checked + span{background:var(--rest)}
   .switch input:checked + span::after{transform:translateX(20px)}
   .danger{color:#ff6b6b;border-color:#ff6b6b55;background:transparent;font-size:13px;padding:9px 16px}
+  .set-group{font-size:11px;font-weight:600;letter-spacing:.08em;color:var(--fg-dim);
+    margin:8px 0 -4px;padding-top:10px;border-top:1px solid var(--line)}
+  .set-group:first-child{padding-top:0;border-top:0;margin-top:0}
+  .danger-row{margin-top:10px;padding-top:14px;border-top:1px solid var(--line)}
   footer{text-align:center;font-size:11px;color:var(--fg-dim);line-height:1.7}
 </style>
 </head>
@@ -318,7 +334,7 @@
   <div class="view hidden" id="viewTimer">
   <h1>タイマー</h1>
   <section class="card timer">
-    <button class="pick-btn" id="pickBtn"><span id="pickCur">対象：未選択</span><span class="cv">▾</span></button>
+    <button class="pick-btn" id="pickBtn"><i class="dot" id="pickDot"></i><span id="pickCur">対象：未選択</span><span class="cv">▾</span></button>
     <div class="pick hidden" id="pickList"></div>
     <div class="task-row" id="taskRow">
       <input id="taskInput" class="task-input" type="text" maxlength="60" placeholder="いまから何をやる？（任意）">
@@ -359,7 +375,10 @@
       <div id="choiceHint" class="hint"></div>
     </div>
   </section>
-
+  <footer>
+    定期的な休憩は入りません。疲れたら「休憩する」、戻りたくなったら「作業にもどる」を押してください。<br>
+    休憩の長さは測るだけで、管理はしません。
+  </footer>
   </div>
 
   <!-- ============ 一覧 ============ -->
@@ -373,13 +392,13 @@
       <div class="crumb" id="crumb"></div>
       <ul class="tree" id="tree"></ul>
       <div class="form hidden" id="form"></div>
-      <div class="rec-actions">
+      <div class="rec-actions" id="recActions">
         <button class="sm hidden" id="btnUp">← 戻る</button>
         <button class="sm" id="btnAdd">＋ 追加</button>
         <button class="sm hidden" id="btnScan">📷 参考書</button>
         <button class="sm hidden" id="btnIcs">📅 カレンダーへ</button>
-        <button class="sm primary" id="btnDecide">決定</button>
-        <button class="sm ghost" id="btnUnlock">選択解除</button>
+        <button class="sm primary hidden" id="btnDecide">このタスクで測る</button>
+        <button class="sm ghost hidden" id="btnUnlock">対象をはずす</button>
       </div>
     </div>
   </section>
@@ -390,12 +409,12 @@
   <div class="view hidden" id="viewLog">
   <h1>記録</h1>
   <section class="card">
-    <p class="sect-title">ダッシュボード</p>
     <div class="stat-row">
       <div class="stat"><div class="v" id="stToday">0分</div><div class="k">今日の作業</div></div>
-      <div class="stat"><div class="v" id="stSessions">0</div><div class="k">今日のセッション</div></div>
-      <div class="stat"><div class="v" id="stStreak">0日</div><div class="k">連続記録</div></div>
+      <div class="stat"><div class="v" id="stSessions">0</div><div class="k">今日の回数</div></div>
+      <div class="stat"><div class="v" id="stStreak">0日</div><div class="k">連続日数</div></div>
     </div>
+    <p class="stat-note">「回数」はタイマーを回した回数、「連続日数」は作業した日が続いた数です。</p>
 
     <div class="tabs">
       <button id="tabBar" class="on">7日グラフ</button>
@@ -431,8 +450,9 @@
   <details>
     <summary>設定</summary>
     <div class="settings-body">
+      <p class="set-group">タイマー</p>
       <label class="field">
-        <span>アイドリングの長さ<div class="desc">まずはこれだけやる、の時間</div></span>
+        <span>まず何分だけやるか<div class="desc">とりあえず手をつける、はじめの時間</div></span>
         <span><input id="cfgIdling" type="number" min="1" max="60" step="1"> 分</span>
       </label>
       <label class="field">
@@ -440,17 +460,15 @@
         <span><input id="cfgAuto" type="number" min="3" max="120" step="1"> 秒</span>
       </label>
       <label class="field">
-        <span>途中の声かけ<div class="desc">作業中にもう一度「続ける？」を出す間隔。0で無効（既定）</div></span>
+        <span>途中の声かけ<div class="desc">作業中にもう一度「続ける？」を出す間隔。0 なら出しません</div></span>
         <span><input id="cfgCheckin" type="number" min="0" max="180" step="5"> 分</span>
       </label>
-      <label class="field">
-        <span>復習の周期（既定）<div class="desc">学習モードのフォルダで使う日数。フォルダごとに上書き可</div></span>
-        <span><input id="cfgSteps" type="text" maxlength="30" placeholder="1,3,7,14"></span>
-      </label>
-      <label class="field">
-        <span>復習の予定時刻<div class="desc">カレンダーに書き出すときの時刻</div></span>
-        <span><input id="cfgReviewHour" type="number" min="0" max="23" step="1"> 時</span>
-      </label>
+
+      <p class="set-group">タスク</p>
+      <label class="field"><span>フォルダの外のタスクも時間を測る<div class="desc">ホーム直下は買い物などのメモ置き場として、既定では測りません</div></span>
+        <span class="switch"><input id="cfgTrackRoot" type="checkbox"><span></span></span></label>
+
+      <p class="set-group">音</p>
       <label class="field"><span>作業を始めたらノイズを鳴らす</span>
         <span class="switch"><input id="cfgNoiseAuto" type="checkbox"><span></span></span></label>
       <label class="field"><span>休憩中もノイズを続ける</span>
@@ -461,17 +479,31 @@
         <span class="switch"><input id="cfgNotify" type="checkbox"><span></span></span></label>
       <label class="field"><span>画面を消灯させない<div class="desc">対応ブラウザのみ</div></span>
         <span class="switch"><input id="cfgWake" type="checkbox"><span></span></span></label>
+
+      <p class="set-group">学習</p>
       <label class="field"><span>学習機能を隠す<div class="desc">忘却曲線の復習と参考書スキャンを使わない</div></span>
         <span class="switch"><input id="cfgHideRec" type="checkbox"><span></span></span></label>
+      <label class="field">
+        <span>復習の周期（既定）<div class="desc">学習モードのフォルダで使う日数。フォルダごとに上書きできます</div></span>
+        <span><input id="cfgSteps" type="text" maxlength="30" placeholder="1,3,7,14"></span>
+      </label>
+      <label class="field">
+        <span>復習の予定時刻<div class="desc">カレンダーに書き出すときの時刻</div></span>
+        <span><input id="cfgReviewHour" type="number" min="0" max="23" step="1"> 時</span>
+      </label>
+
+      <p class="set-group">データ</p>
       <div class="field">
         <span>バックアップ<div class="desc" id="backupLabel"></div></span>
       </div>
       <div class="rec-actions">
         <button id="btnExport" class="sm">書き出す</button>
         <button id="btnImport" class="sm">読み込む</button>
-        <button id="btnReset" class="sm danger">記録を削除</button>
       </div>
       <input type="file" id="fileInput" accept="application/json" class="hidden">
+      <div class="danger-row">
+        <button id="btnReset" class="sm danger">作業時間の記録を削除</button>
+      </div>
       <div class="field">
         <span>バージョン<div class="desc" id="buildLabel"></div></span>
       </div>
@@ -479,8 +511,8 @@
   </details>
 
   <footer>
-    休憩の長さは管理しません。戻りたくなったら「作業にもどる」を押してください。<br>
-    記録はこの端末のブラウザ内にのみ保存されます。
+    記録はこの端末のブラウザ内にのみ保存されます。<br>
+    機種変更のときは、上の「書き出す」でファイルに残してください。
   </footer>
   </div>
 
@@ -518,13 +550,13 @@
   // ===== 保存領域 =====
   const K_CFG='awapomo.cfg', K_REC='awapomo.records', K_LOG='awapomo.log', K_TREE='awapomo.tree',
         K_UI='awapomo.ui', K_DONE='awapomo.done';
-  const BUILD = '2026-08-05 期日に時刻を追加';
+  const BUILD = '2026-08-05 メモと計測タスクの分離';
   const CIRC = 2 * Math.PI * 116;
   const PALETTE = ['#ff7a59','#ffc857','#4cc9a7','#7aa2ff','#c792ea','#f06292','#4dd0e1','#a5d66d','#9aa4b8'];
 
   const DEFAULT_CFG = {
     idlingMin:1, autoSec:15, checkinMin:0,
-    steps:'1,3,7,14', reviewHour:9,
+    steps:'1,3,7,14', reviewHour:9, trackRoot:false,
     noiseKind:'brown', noiseVol:35, noiseAuto:false, noiseInRest:false,
     sound:true, notify:false, wake:false, hideRec:false
   };
@@ -626,6 +658,14 @@
     for(let i=p.length-1;i>=0;i--) if(p[i].color) return p[i].color;
     return PALETTE[0];
   };
+  // 時間を測るかどうかはフォルダ単位で決める。
+  // ホーム直下は買い物などのメモ置き場なので既定では測らない。
+  // 祖先に一つでも「記録しない」フォルダがあれば、その配下はすべて測らない。
+  function isTracked(id){
+    const folders = pathOf(id).filter(n => n.type === 'folder');
+    if(!folders.length) return !!cfg.trackRoot;           // フォルダに入っていない＝ホーム直下
+    return !folders.some(n => n.track === false);
+  }
   // 学習モード：資格などのフォルダでだけ忘却曲線リマインドを使う
   const studyOn = id => pathOf(id).some(n => n.study);
   const stepsFor = id => {
@@ -878,7 +918,7 @@
     if(st.mode===IDLE){
       $('phase').textContent='じゅんび';
       $('time').textContent=mmss(idlingSec);
-      $('sub').textContent = ui.lockedId && tree[ui.lockedId] ? nameOf(ui.lockedId) : `まずは${cfg.idlingMin}分だけ`;
+      $('sub').textContent = `まずは${cfg.idlingMin}分だけ`;   // 対象名は上のボタンに出ている
       setRing(1,'var(--line)',false);
       acts.append(button(`${cfg.idlingMin}分だけ はじめる`,'primary wide',startSession));
 
@@ -990,7 +1030,8 @@
   function renderPickerHead(){
     const locked = ui.lockedId && tree[ui.lockedId];
     $('pickCur').textContent = locked ? `対象：${nameOf(ui.lockedId)}` : '対象：未選択（自由入力）';
-    $('pickCur').style.color = locked ? colorOf(ui.lockedId) : '';
+    // 色は先頭のドットで示す。文字まで着色すると警告のように見えてしまう
+    $('pickDot').style.background = locked ? colorOf(ui.lockedId) : 'transparent';
     $('pickBtn').classList.toggle('open', pickOpen);
     // 対象が決まっていれば自由入力欄は不要
     $('taskRow').classList.toggle('hidden', st.mode !== IDLE || !!locked);
@@ -1006,6 +1047,8 @@
     const today = dayKey();
     const soon = [], rest = [], done = [], folders = [];
     Object.values(tree).forEach(n => {
+      // 時間を記録しないフォルダ配下は候補に出さない（ただし今の対象は残す）
+      if(!isTracked(n.id) && ui.lockedId !== n.id) return;
       if(n.type === 'folder'){ folders.push(n); return; }
       if(n.type !== 'task') return;
       if(isDone(n)){ done.push(n); return; }
@@ -1023,7 +1066,10 @@
 
     if(!soon.length && !rest.length && !done.length && !folders.length){
       const p = document.createElement('div'); p.className = 'none';
-      p.textContent = 'まだ何も登録されていません。「一覧」タブか「今日」タブから追加してください。';
+      // 登録はあるが、どれも「時間を記録しない」場所にある場合を区別する
+      p.textContent = Object.values(tree).some(n => n.type==='task')
+        ? '時間を測る対象がありません。一覧でフォルダを作るか、下の入力から始めてください。'
+        : 'まだ何も登録されていません。「一覧」タブか「今日」タブから追加してください。';
       box.append(p);
     }
     const sect = (title, arr) => {
@@ -1037,9 +1083,8 @@
     sect('フォルダごとに測る', folders);
     sect('完了ずみ', done);
 
-    const h = document.createElement('h3'); h.textContent = '　';
     const clr = document.createElement('button');
-    clr.className = ui.lockedId ? '' : 'on';
+    clr.className = (ui.lockedId ? '' : 'on') + ' sep';
     const cn = document.createElement('span'); cn.className = 'nm';
     cn.textContent = '対象を決めずに測る';
     cn.style.color = 'var(--fg-dim)';
@@ -1049,7 +1094,7 @@
       pickOpen = false;
       renderPicker(); render(); renderTree();
     };
-    box.append(h, clr);
+    box.append(clr);
   }
   $('pickBtn').onclick = () => { pickOpen = !pickOpen; renderPicker(); };
 
@@ -1067,8 +1112,9 @@
       review:false, doneAt:null, reviewIdx:0, nextReview:null
     };
     selId = id;
-    ui.lockedId = id; save(K_UI, ui);
     save(K_TREE, tree);
+    // タイマーから登録した以上は測るつもりなので、記録しないフォルダでも対象にする
+    ui.lockedId = id; save(K_UI, ui);
     if(linkCurrent){ st.nodeId = id; st.label = nm; }   // 計測中なら、この記録もタスクに紐づける
     renderTree(); renderToday(); renderPicker(); render();
     return id;
@@ -1135,20 +1181,23 @@
       meta.append(c);
     }
     body.append(nm, meta);
-    body.onclick = () => { browseId = n.parent || null; selId = n.id; setTab('list'); openForm('edit', n); };
+    body.onclick = () => { browseId = n.parent || null; selId = n.id; setTab('list'); openForm('edit', n, 'today'); };
     li.append(body);
 
-    const play = document.createElement('button');
-    play.className = 'play'; play.textContent = '▶'; play.title = 'このタスクで計測を始める';
-    play.onclick = e => {
-      e.stopPropagation();
-      ui.lockedId = n.id; save(K_UI, ui);
-      $('taskInput').value = '';
-      setTab('timer');
-      if(st.mode === IDLE) startSession();
-      renderTree();
-    };
-    li.append(play);
+    // 時間を測らないタスク（買い物・振込など）に再生ボタンは出さない
+    if(isTracked(n.id)){
+      const play = document.createElement('button');
+      play.className = 'play'; play.textContent = '▶'; play.title = 'このタスクで計測を始める';
+      play.onclick = e => {
+        e.stopPropagation();
+        ui.lockedId = n.id; save(K_UI, ui);
+        $('taskInput').value = '';
+        setTab('timer');
+        if(st.mode === IDLE) startSession();
+        renderTree();
+      };
+      li.append(play);
+    }
     return li;
   }
 
@@ -1174,19 +1223,24 @@
       const p = document.createElement('div');
       p.className = 'tlist';
       const e = document.createElement('div'); e.className = 'empty';
-      e.textContent = Object.values(tree).some(n => n.type==='task')
-        ? '今日ぶんは片づきました。'
-        : 'タスクがまだありません。下の「＋ タスクを追加」から作れます。';
+      const hasTask = Object.values(tree).some(n => n.type==='task');
+      const doneToday = dones.filter(d => d.date === dayKey()).length;
+      // 何も終えていない日に「片づきました」とは言わない
+      e.textContent = !hasTask ? 'タスクがまだありません。下の「＋ タスクを追加」から作れます。'
+                    : doneToday   ? `今日ぶんは片づきました。（${doneToday}件 完了）`
+                                  : '今日が期日のタスクはありません。';
       p.append(e); box.append(p);
     }
 
     if(noDate.length){
+      // 今日やることが無いときは、期日なしを畳んだままにしない
+      const open = ui.showNoDate || (!late.length && !now.length);
       const wrap = document.createElement('div'); wrap.className = 'today-sect';
       const t = document.createElement('button'); t.className = 'fold';
-      t.textContent = `${ui.showNoDate ? '▾' : '▸'} 期日なし（${noDate.length}）`;
-      t.onclick = () => { ui.showNoDate = !ui.showNoDate; save(K_UI, ui); renderToday(); };
+      t.textContent = `${open ? '▾' : '▸'} 期日なし（${noDate.length}）`;
+      t.onclick = () => { ui.showNoDate = !open; save(K_UI, ui); renderToday(); };
       wrap.append(t);
-      if(ui.showNoDate){
+      if(open){
         const ul = document.createElement('ul'); ul.className = 'tlist';
         noDate.forEach(it => ul.append(taskRow(it)));
         wrap.append(ul);
@@ -1194,15 +1248,16 @@
       box.append(wrap);
     }
   }
-  $('btnQuickAdd').onclick = () => { setTab('list'); openForm('add', null); };
+  $('btnQuickAdd').onclick = () => { setTab('list'); openForm('add', null, 'today'); };
 
   // ===== 作業記録UI =====
   function renderHead(){
     const locked = ui.lockedId && tree[ui.lockedId];
-    $('recCur').textContent = locked ? `計測対象：${nameOf(ui.lockedId)}` : '計測対象：未選択';
+    $('recCur').textContent = locked ? `タイマーの対象：${nameOf(ui.lockedId)}` : 'タイマーの対象：未選択';
     $('recCur').classList.toggle('none', !locked);
-    $('recCur').style.color = locked ? colorOf(ui.lockedId) : '';
-    $('btnDecide').disabled = !selId;
+    // 選んでいる間だけ出す。無効なボタンが並んでいると何を押せるのか分からなくなる
+    $('btnDecide').classList.toggle('hidden', !selId || !isTracked(selId));
+    $('btnUnlock').classList.toggle('hidden', !locked);
     // 参考書のスキャンは学習モードのフォルダの中でだけ
     $('btnScan').classList.toggle('hidden', cfg.hideRec || !studyOn(browseId));
     $('btnIcs').classList.remove('hidden');
@@ -1234,7 +1289,7 @@
       const p = document.createElement('li');
       p.className = 'empty';
       p.textContent = browseId ? 'このフォルダは空です。「＋ 追加」から作れます。'
-                               : '教科やプロジェクトのフォルダを作ると、時間をタスク別に記録できます。';
+                               : 'タスクをそのまま作れます。フォルダを作ると、仕事や勉強のまとまりごとに整理できます。';
       list.append(p);
       return;
     }
@@ -1326,11 +1381,13 @@
     });
   }
 
-  function openForm(mode, node){
+  function openForm(mode, node, backTo){
     const f = $('form');
     f.classList.remove('hidden'); f.innerHTML = '';
     let type  = node ? node.type : 'task';
-    let color = node && node.color ? node.color : PALETTE[0];
+    // 新しいフォルダは、既存と色がかぶらないよう順番に振る
+    const folderCount = Object.values(tree).filter(n => n.type === 'folder').length;
+    let color = node && node.color ? node.color : PALETTE[folderCount % PALETTE.length];
 
     const seg = document.createElement('div'); seg.className='seg';
     const bF = document.createElement('button'), bT = document.createElement('button');
@@ -1339,7 +1396,7 @@
 
     const name = document.createElement('input');
     name.type='text'; name.maxLength=40;
-    name.placeholder='名前（例：英語 / 単語帳 30ページ）';
+    name.placeholder='名前（例：牛乳を買う ／ 英語 単語帳30ページ）';
     name.value = node ? node.name : '';
 
     // --- フォルダ用 ---
@@ -1357,6 +1414,15 @@
     const de = document.createElement('input'); de.type='date'; de.value = node && node.endDate || '';
     const dl = document.createElement('label'); dl.textContent='期間';
     dr.append(dl, ds, de);
+
+    // 時間を記録するか（配下のタスクに引き継がれる）
+    const tRow = document.createElement('label'); tRow.className='chk';
+    const tChk = document.createElement('input'); tChk.type='checkbox';
+    tChk.checked = !node || node.track !== false;
+    tRow.append(tChk, document.createTextNode('時間を記録する（タイマーで測る）'));
+    const tHint = document.createElement('div');
+    tHint.style.cssText = 'font-size:11px;color:var(--fg-dim);line-height:1.6';
+    tHint.textContent = '外すと、配下のタスクはタイマーの対象に出ません。買い物や振込などのメモ向け。';
 
     // 資格・学習モード（このフォルダ配下でだけ忘却曲線リマインドを使う）
     const sRow = document.createElement('label'); sRow.className='chk';
@@ -1390,12 +1456,16 @@
       hint.textContent = aChk.checked
         ? '上の周期で復習しつつ、試験までの残り日数の半分を超えない範囲に自動で詰めます。'
         : '上の周期をそのまま使います。';
+      // 学習モードは時間を測る前提なので、記録のトグルは触らせない
+      if(on && !tChk.checked) tChk.checked = true;
+      tRow.classList.toggle('hidden', on);
+      tHint.classList.toggle('hidden', on);
     };
     sChk.onchange = syncStudy;
     aChk.onchange = syncStudy;
     syncStudy();
 
-    fBox.append(sw, dr, sRow, aRow, sStepRow, hint);
+    fBox.append(sw, dr, tRow, tHint, sRow, aRow, sStepRow, hint);
 
     // --- タスク用 ---
     const tBox = document.createElement('div');
@@ -1403,21 +1473,25 @@
     const r1 = document.createElement('div'); r1.className='r';
     const l1 = document.createElement('label'); l1.textContent='予定時間';
     const plan = document.createElement('input'); plan.type='number'; plan.min='0'; plan.max='600'; plan.step='5';
-    plan.value = node && node.planMin ? node.planMin : 0;
+    plan.value = node && node.planMin ? node.planMin : '';
+    plan.placeholder = '未設定';
     const u1 = document.createElement('label'); u1.textContent='分';
     r1.append(l1, plan, u1);
     // 期日（時刻は任意）
-    const rD = document.createElement('div'); rD.className='r';
-    const lD = document.createElement('label'); lD.textContent='期日';
+    const rD = document.createElement('div'); rD.className='stack';
+    const lD = document.createElement('label'); lD.textContent='期日（時刻は任意）';
+    const dueRow = document.createElement('div'); dueRow.className='r';
     const dueIn = document.createElement('input'); dueIn.type='date';
     dueIn.style.cssText = 'flex:3;min-width:0';
     dueIn.value = node && node.due || '';
     const timeIn = document.createElement('input'); timeIn.type='time';
     timeIn.style.cssText = 'flex:2;min-width:0';
     timeIn.value = node && node.dueTime || '';
-    const clr = document.createElement('button'); clr.className='sm ghost'; clr.textContent='なし';
+    const clr = document.createElement('button'); clr.className='sm ghost'; clr.textContent='消す';
+    clr.style.flex = 'none';
     clr.onclick = () => { dueIn.value = ''; timeIn.value = ''; };
-    rD.append(lD, dueIn, timeIn, clr);
+    dueRow.append(dueIn, timeIn, clr);
+    rD.append(lD, dueRow);
 
     // 繰り返し
     const cur = node ? recurOf(node) : { freq:'none', every:1, days:[], monthDay:null };
@@ -1495,6 +1569,7 @@
         startDate: type==='folder' ? (ds.value||null) : null,
         endDate:   type==='folder' ? (de.value||null) : null,
         study:     type==='folder' ? sChk.checked : false,
+        track:     type==='folder' ? (sChk.checked || tChk.checked) : undefined,
         autoSteps: type==='folder' ? aChk.checked : true,
         steps:     type==='folder' && sChk.checked ? (parseSteps(sStep.value) || []).join(',') : '',
         planMin:   type==='task' ? Number(plan.value)||0 : 0,
@@ -1526,11 +1601,12 @@
           doneAt:null, reviewIdx:0,
           nextReview: base.review ? dayKey() : null }, base);
         selId = id;
-        // 登録したタスクは、そのままタイマーの計測対象にする
-        if(type==='task'){ ui.lockedId = id; save(K_UI, ui); }
+        // 時間を測るフォルダの中なら、登録したタスクをそのまま計測対象にする
+        if(type==='task' && isTracked(id)){ ui.lockedId = id; save(K_UI, ui); }
       }
       save(K_TREE, tree); closeForm();
       renderTree(); renderStats(); renderToday(); renderPicker(); render();
+      if(backTo) setTab(backTo);   // 今日タブから開いたときは戻す
     };
     const cancel = document.createElement('button'); cancel.className='sm ghost';
     cancel.textContent='キャンセル'; cancel.onclick = closeForm;
@@ -1561,9 +1637,13 @@
 
     f.append(seg, name, fBox, tBox, acts);
     syncSeg();
+    $('recActions').classList.add('hidden');   // フォーム中の「追加」と紛れないように
     name.focus();
   }
-  function closeForm(){ $('form').classList.add('hidden'); $('form').innerHTML=''; }
+  function closeForm(){
+    $('form').classList.add('hidden'); $('form').innerHTML='';
+    $('recActions').classList.remove('hidden');
+  }
 
   $('btnUp').onclick     = () => {
     browseId = (tree[browseId] && tree[browseId].parent) || null;
@@ -2025,6 +2105,11 @@
       const max = Math.max(60*25, ...vals);
       days.forEach((dd,i) => chart.append(colEl(names[dd.getDay()],
         [{h: vals[i]/max, today:i===days.length-1, zero:!vals[i]}], `${dayKey(dd)}　${humanMin(vals[i])}`)));
+      if(!vals.some(v => v > 0)){
+        const s = document.createElement('span');
+        s.textContent = 'まだ記録がありません。タイマーを回すとここに出ます。';
+        legend.append(s);
+      }
       return;
     }
     const depth = ui.depth;
@@ -2191,7 +2276,8 @@
   function bindSettings(){
     const map = { cfgIdling:'idlingMin', cfgAuto:'autoSec', cfgCheckin:'checkinMin', cfgSteps:'steps',
                   cfgReviewHour:'reviewHour', cfgNoiseAuto:'noiseAuto', cfgNoiseInRest:'noiseInRest',
-                  cfgSound:'sound', cfgNotify:'notify', cfgWake:'wake', cfgHideRec:'hideRec' };
+                  cfgSound:'sound', cfgNotify:'notify', cfgWake:'wake', cfgHideRec:'hideRec',
+                  cfgTrackRoot:'trackRoot' };
     for(const [id, key] of Object.entries(map)){
       const node = $(id);
       if(node.type==='checkbox') node.checked = cfg[key]; else node.value = cfg[key];
@@ -2204,6 +2290,7 @@
           }
           if(key==='wake') updateWakeLock();
           if(key==='hideRec'){ renderHead(); renderToday(); }
+          if(key==='trackRoot'){ renderTree(); renderToday(); renderPicker(); }
         }else if(node.type==='number'){
           const v = Number(node.value);
           cfg[key] = Number.isFinite(v) ? Math.max(Number(node.min), Math.min(Number(node.max), v)) : DEFAULT_CFG[key];
