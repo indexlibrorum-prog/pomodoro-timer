@@ -86,7 +86,9 @@
 
   /* ---- タイマー ---- */
   .timer{display:flex;flex-direction:column;align-items:center;gap:18px}
-  .task-input{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:12px;
+  .task-row{display:flex;gap:8px;width:100%;align-items:stretch}
+  .task-row .sm{flex:none;white-space:nowrap}
+  .task-input{flex:1;min-width:0;background:var(--card2);border:1px solid var(--line);border-radius:12px;
     color:var(--fg);font:inherit;font-size:15px;padding:12px 14px;text-align:center}
   .task-input:focus{outline:2px solid var(--work);outline-offset:1px}
   .task-view{font-size:15px;text-align:center;min-height:20px;word-break:break-word}
@@ -318,7 +320,10 @@
   <section class="card timer">
     <button class="pick-btn" id="pickBtn"><span id="pickCur">対象：未選択</span><span class="cv">▾</span></button>
     <div class="pick hidden" id="pickList"></div>
-    <input id="taskInput" class="task-input" type="text" maxlength="60" placeholder="いまから何をやる？（任意）">
+    <div class="task-row" id="taskRow">
+      <input id="taskInput" class="task-input" type="text" maxlength="60" placeholder="いまから何をやる？（任意）">
+      <button class="sm" id="btnRegister">＋一覧へ</button>
+    </div>
     <div id="taskView" class="task-view hidden"></div>
 
     <div id="ring" class="ring">
@@ -467,6 +472,9 @@
         <button id="btnReset" class="sm danger">記録を削除</button>
       </div>
       <input type="file" id="fileInput" accept="application/json" class="hidden">
+      <div class="field">
+        <span>バージョン<div class="desc" id="buildLabel"></div></span>
+      </div>
     </div>
   </details>
 
@@ -510,6 +518,7 @@
   // ===== 保存領域 =====
   const K_CFG='awapomo.cfg', K_REC='awapomo.records', K_LOG='awapomo.log', K_TREE='awapomo.tree',
         K_UI='awapomo.ui', K_DONE='awapomo.done';
+  const BUILD = '2026-08-05 タスク選択';
   const CIRC = 2 * Math.PI * 116;
   const PALETTE = ['#ff7a59','#ffc857','#4cc9a7','#7aa2ff','#c792ea','#f06292','#4dd0e1','#a5d66d','#9aa4b8'];
 
@@ -918,6 +927,11 @@
         button('終了','ghost',finishSession)
       );
     }
+    // 対象なしで測っているときは、途中でも一覧に登録して紐づけられる
+    if(st.mode!==IDLE && st.mode!==CHOICE && !st.nodeId && st.label){
+      acts.append(button('この作業を一覧に登録', 'ghost sm', () => registerFromText(st.label, true)));
+    }
+
     document.title = st.mode===IDLE ? 'あわポモ風タイマー'
       : `${$('time').textContent} ${st.mode===REST?'☕':'⏱'} ${st.label||'あわポモ'}`;
     renderMini();
@@ -958,7 +972,9 @@
     const b = document.createElement('button');
     b.className = ui.lockedId === n.id ? 'on' : '';
     b.style.borderLeftColor = ui.lockedId === n.id ? colorOf(n.id) : 'transparent';
-    const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = n.name;
+    const nm = document.createElement('span'); nm.className = 'nm';
+    nm.textContent = (n.type==='folder' ? '📁 ' : isDone(n) ? '✓ ' : '') + n.name;
+    if(isDone(n)) nm.style.color = 'var(--fg-dim)';
     const pt = document.createElement('span'); pt.className = 'pt';
     pt.textContent = pathOf(n.id).slice(0,-1).map(x => x.name).join(' / ');
     b.append(nm, pt);
@@ -978,7 +994,7 @@
     $('pickCur').style.color = locked ? colorOf(ui.lockedId) : '';
     $('pickBtn').classList.toggle('open', pickOpen);
     // 対象が決まっていれば自由入力欄は不要
-    $('taskInput').classList.toggle('hidden', st.mode !== IDLE || !!locked);
+    $('taskRow').classList.toggle('hidden', st.mode !== IDLE || !!locked);
     $('pickBtn').classList.toggle('hidden', st.mode !== IDLE);
     $('pickList').classList.toggle('hidden', !pickOpen || st.mode !== IDLE);
   }
@@ -989,9 +1005,11 @@
 
     const box = $('pickList'); box.innerHTML = '';
     const today = dayKey();
-    const soon = [], rest = [];
+    const soon = [], rest = [], done = [], folders = [];
     Object.values(tree).forEach(n => {
-      if(n.type !== 'task' || isDone(n)) return;
+      if(n.type === 'folder'){ folders.push(n); return; }
+      if(n.type !== 'task') return;
+      if(isDone(n)){ done.push(n); return; }
       const rv = (!cfg.hideRec && reviewOn(n) && n.nextReview) ? diffDays(n.nextReview, today) : null;
       const du = n.due ? diffDays(n.due, today) : null;
       const vals = [rv, du].filter(v => v !== null);
@@ -1000,12 +1018,13 @@
     // そのほかは一覧と同じ並び（フォルダごとにまとまる）にする
     const folderPath = n => pathOf(n.id).slice(0,-1).map(x => x.name).join(' / ');
     const byOrder = (a,b) => (a.order||0) - (b.order||0) || a.createdAt - b.createdAt;
+    const byFolder = (a,b) => folderPath(a).localeCompare(folderPath(b), 'ja') || byOrder(a,b);
     soon.sort(byOrder);
-    rest.sort((a,b) => folderPath(a).localeCompare(folderPath(b), 'ja') || byOrder(a,b));
+    rest.sort(byFolder); done.sort(byFolder); folders.sort(byFolder);
 
-    if(!soon.length && !rest.length){
+    if(!soon.length && !rest.length && !done.length && !folders.length){
       const p = document.createElement('div'); p.className = 'none';
-      p.textContent = 'タスクがありません。「一覧」タブか「今日」タブから追加してください。';
+      p.textContent = 'まだ何も登録されていません。「一覧」タブか「今日」タブから追加してください。';
       box.append(p);
     }
     const sect = (title, arr) => {
@@ -1016,6 +1035,8 @@
     };
     sect('今日のもの', soon);
     sect('そのほか', rest);
+    sect('フォルダごとに測る', folders);
+    sect('完了ずみ', done);
 
     const h = document.createElement('h3'); h.textContent = '　';
     const clr = document.createElement('button');
@@ -1032,6 +1053,32 @@
     box.append(h, clr);
   }
   $('pickBtn').onclick = () => { pickOpen = !pickOpen; renderPicker(); };
+
+  // タイマーで自由入力した内容を、そのまま一覧のタスクとして登録する
+  function registerFromText(text, linkCurrent){
+    const nm = (text || '').trim();
+    if(!nm) return null;
+    const sibs = childrenOf(browseId);
+    const id = uid();
+    tree[id] = {
+      id, type:'task', name:nm, parent:browseId||null, createdAt:Date.now(),
+      order:(sibs.length ? Math.max(...sibs.map(s=>s.order||0))+1 : 0),
+      color:null, startDate:null, endDate:null, study:false, autoSteps:true, steps:'',
+      planMin:0, due:null, recur:{ freq:'none', every:1, days:[], monthDay:null },
+      review:false, doneAt:null, reviewIdx:0, nextReview:null
+    };
+    selId = id;
+    ui.lockedId = id; save(K_UI, ui);
+    save(K_TREE, tree);
+    if(linkCurrent){ st.nodeId = id; st.label = nm; }   // 計測中なら、この記録もタスクに紐づける
+    renderTree(); renderToday(); renderPicker(); render();
+    return id;
+  }
+  $('btnRegister').onclick = () => {
+    if(!$('taskInput').value.trim()){ $('taskInput').focus(); return; }
+    registerFromText($('taskInput').value);
+    $('taskInput').value = '';
+  };
 
   // ===== 今日 =====
   function todayItems(){
@@ -2212,6 +2259,7 @@
   });
 
   bindSettings();
+  $('buildLabel').textContent = BUILD;
   $('noiseKind').value = cfg.noiseKind;
   $('noiseVol').value  = cfg.noiseVol;
   renderNoise();
