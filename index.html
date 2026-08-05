@@ -213,6 +213,7 @@
   .notice{background:var(--card);border:1px solid var(--idling);border-radius:14px;padding:14px 16px;
     display:flex;flex-direction:column;gap:10px;font-size:13px;line-height:1.6}
   .notice .acts{display:flex;gap:8px}
+  .notice.danger-note{border-color:#ff6b6b;color:#ff9b9b}
 
   /* ---- バーコードスキャナ ---- */
   .scan{position:fixed;inset:0;z-index:50;background:#000;display:flex;flex-direction:column}
@@ -303,6 +304,11 @@
 </head>
 <body>
 <div class="app">
+  <div class="notice danger-note hidden" id="storageNote">
+    <div>保存できませんでした。端末の空き容量が足りない可能性があります。<br>
+      いまの記録は画面を閉じると失われます。設定から書き出しておいてください。</div>
+  </div>
+
   <button class="minibar hidden" id="miniBar">
     <span class="dot" id="miniDot"></span>
     <span class="t" id="miniTime">0:00</span>
@@ -549,8 +555,8 @@
 
   // ===== 保存領域 =====
   const K_CFG='awapomo.cfg', K_REC='awapomo.records', K_LOG='awapomo.log', K_TREE='awapomo.tree',
-        K_UI='awapomo.ui', K_DONE='awapomo.done';
-  const BUILD = '2026-08-05 メモと計測タスクの分離';
+        K_UI='awapomo.ui', K_DONE='awapomo.done', K_TIMER='awapomo.timer', K_AUTOBK='awapomo.autobackup';
+  const BUILD = '2026-08-06 記録の信頼性まわりの修正';
   const CIRC = 2 * Math.PI * 116;
   const PALETTE = ['#ff7a59','#ffc857','#4cc9a7','#7aa2ff','#c792ea','#f06292','#4dd0e1','#a5d66d','#9aa4b8'];
 
@@ -562,7 +568,19 @@
   };
 
   const load = (k, fb) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? fb : v; } catch { return fb; } };
-  const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+
+  // 保存に失敗したら黙って握りつぶさない。容量不足に気づけないと記録を静かに失う。
+  let storageOk = true;
+  function onStorageError(){
+    if(!storageOk) return;
+    storageOk = false;
+    const n = document.getElementById('storageNote');
+    if(n) n.classList.remove('hidden');
+  }
+  const save = (k, v) => {
+    try { localStorage.setItem(k, JSON.stringify(v)); return true; }
+    catch(e){ onStorageError(e); return false; }
+  };
 
   let cfg     = Object.assign({}, DEFAULT_CFG, load(K_CFG, {}));
   let records = load(K_REC, {});     // 'YYYY-MM-DD' -> {work, rest, sessions}
@@ -736,24 +754,31 @@
       return null;
     }
     if(r.freq==='yearly'){
+      // setFullYear だと 2/29 が非うるう年で 3/1 に流れるので、月の日数で丸める
       for(let i=0;i<=2;i++){
-        const t = new Date(d); t.setFullYear(d.getFullYear()+i);
+        const y = d.getFullYear()+i, m = d.getMonth();
+        const last = new Date(y, m+1, 0).getDate();
+        const t = new Date(y, m, Math.min(d.getDate(), last));
         if(dayKey(t) > fromKey) return dayKey(t);
       }
       return null;
     }
     return null;
   }
+  // 今日以降になるまで進める。異常データで回り切らない場合は null（呼び出し側は期日を変えない）
   function nextDue(n, fromKey){
     let k = stepDue(n, fromKey || n.due || dayKey()), guard = 0;
     while(k && diffDays(k, dayKey()) < 0 && guard++ < 500) k = stepDue(n, k);
-    return k;
+    return (k && diffDays(k, dayKey()) >= 0) ? k : null;
   }
   function autoReset(){
     let changed = false;
     Object.values(tree).forEach(n => {
       if(!isRecurring(n) || carriesOver(n)) return;
-      if(n.due && diffDays(n.due, dayKey()) < 0){ n.due = nextDue(n, n.due); changed = true; }
+      if(n.due && diffDays(n.due, dayKey()) < 0){
+        const next = nextDue(n, n.due);
+        if(next){ n.due = next; changed = true; }
+      }
     });
     if(changed) save(K_TREE, tree);
   }
@@ -798,7 +823,8 @@
         n.nextReview = nextReviewOf(n);
         n.reviewIdx = Math.min((n.reviewIdx||0)+1, stepsFor(n.id).length-1);
       }else if(isRecurring(n)){
-        n.due = nextDue(n, n.due || dayKey());
+        const next = nextDue(n, n.due || dayKey());
+        if(next) n.due = next;          // 求まらなければ期日は動かさない
       }
     }else if(n.prev){
       n.doneAt = n.prev.doneAt; n.nextReview = n.prev.nextReview;
@@ -833,23 +859,62 @@
   const startOfToday = () => { const d=new Date(); d.setHours(0,0,0,0); return d.getTime(); };
 
   // ===== 日次記録 =====
-  function addToday(kind, sec){
-    if(sec<=0) return;
-    const r = records[dayKey()] || (records[dayKey()] = {work:0, rest:0, sessions:0});
-    r[kind] += sec;
+  const MAX_GAP_MS = 6*3600*1000;   // これを超える中断は異常値として扱う
+
+  const dayRec = key => records[key] || (records[key] = {work:0, rest:0, sessions:0});
+
+  // 期間をローカル暦日の境界で分割して加算する。
+  // 深夜をまたいだ作業が翌日に丸ごと寄ってしまわないようにするため。
+  function addSpan(kind, from, to){
+    let cur = from, guard = 0;
+    while(cur < to && guard++ < 400){
+      const d = new Date(cur);
+      const midnight = new Date(d.getFullYear(), d.getMonth(), d.getDate()+1).getTime();
+      const end = Math.min(to, midnight);
+      dayRec(dayKey(d))[kind] += (end - cur) / 1000;
+      cur = end;
+    }
   }
   function flush(){
-    const now = Date.now(), d = (now-lastFlush)/1000;
+    const now = Date.now(), from = lastFlush;
     lastFlush = now;
-    if(d<=0 || d>3600*6) return;
-    if(st.mode===IDLING || st.mode===WORK) addToday('work', d);
-    else if(st.mode===REST) addToday('rest', d);
+    if(now <= from || now - from > MAX_GAP_MS) return;
+    if(st.mode===IDLING || st.mode===WORK) addSpan('work', from, now);
+    else if(st.mode===REST) addSpan('rest', from, now);
     save(K_REC, records);
   }
   function endSeg(){
-    const s = (Date.now()-st.segStart)/1000;
+    // 閉じっぱなしだった時間をそのまま作業時間にしない
+    const s = Math.min(Date.now()-st.segStart, MAX_GAP_MS) / 1000;
     if(st.mode===IDLING || st.mode===WORK) st.sessionWork += s;
     else if(st.mode===REST) st.sessionRest += s;
+  }
+
+  // ===== 実行状態の保存と復元 =====
+  // 再読込やタブの復帰でセッションが消えないように、状態そのものを持ち回す。
+  function saveTimer(){
+    if(st.mode === IDLE){ try{ localStorage.removeItem(K_TIMER); }catch{} return; }
+    save(K_TIMER, Object.assign({}, st, { lastFlush }));
+  }
+  function restoreTimer(){
+    const t = load(K_TIMER, null);
+    if(!t || !t.mode || t.mode === IDLE) return;
+    const gap = Date.now() - (t.lastFlush || t.segStart || 0);
+    Object.assign(st, {
+      mode:t.mode, segStart:t.segStart||Date.now(), sessionStart:t.sessionStart||Date.now(),
+      sessionWork:t.sessionWork||0, sessionRest:t.sessionRest||0,
+      label:t.label||'', nodeId:t.nodeId||null, choiceStart:t.choiceStart||Date.now(),
+      counted:!!t.counted
+    });
+    lastFlush = t.lastFlush || Date.now();
+    if(gap > MAX_GAP_MS){
+      // 長時間ぶんは計上せず、そこまでの確定分だけ残してセッションを閉じる
+      lastFlush = Date.now();
+      st.segStart = Date.now();
+      finishSession();
+      return;
+    }
+    updateWakeLock();
   }
 
   // ===== 遷移 =====
@@ -861,6 +926,7 @@
     if(mode===CHOICE) st.choiceStart = Date.now();
     if(mode===REST && !cfg.noiseInRest) noiseStop();
     else if(mode===WORK && cfg.noiseAuto && !noisePlaying) noisePlay();
+    saveTimer();
     render(); updateWakeLock();
   }
   function startSession(){
@@ -878,14 +944,15 @@
     if(st.mode!==IDLE && st.mode!==CHOICE) endSeg();
     const work = Math.round(st.sessionWork);
     if(work>=30){
-      const k = dayKey(new Date(st.sessionStart));
-      const r = records[k] || (records[k] = {work:0, rest:0, sessions:0});
+      // 回数とログはセッションを始めた日に付ける（時間だけは暦日で分かれる）
+      const r = dayRec(dayKey(new Date(st.sessionStart)));
       if(!st.counted){ r.sessions += 1; st.counted = true; }
       logs.unshift({ start: st.sessionStart, sec: work, label: st.label, nodeId: st.nodeId });
       logs = logs.slice(0, 2000);
       save(K_LOG, logs); save(K_REC, records);
     }
     st.mode = IDLE; st.sessionWork = 0; st.sessionRest = 0;
+    saveTimer();
     noiseStop();
     render(); renderStats(); renderTree(); updateWakeLock();
   }
@@ -1445,6 +1512,15 @@
     const hint = document.createElement('div');
     hint.style.cssText = 'font-size:11px;color:var(--fg-dim);line-height:1.6';
 
+    // 祖先が「記録しない」なら、その配下で学習モードは使えない（階層継承を優先する）
+    const parentTracked = (() => {
+      const pid = mode==='edit' ? (node.parent||null) : (browseId||null);
+      const folders = pathOf(pid).filter(x => x.type==='folder');
+      return folders.length ? !folders.some(x => x.track === false) : true;
+    })();
+    const warn = document.createElement('div');
+    warn.style.cssText = 'font-size:11px;color:#ff9b9b;line-height:1.6';
+
     const syncStudy = () => {
       const on = sChk.checked;
       // 学習モードでは終了日を「試験日」として使う
@@ -1460,12 +1536,19 @@
       if(on && !tChk.checked) tChk.checked = true;
       tRow.classList.toggle('hidden', on);
       tHint.classList.toggle('hidden', on);
+
+      sChk.disabled = !parentTracked;
+      const conflict = !parentTracked && on;   // 既存の矛盾データ
+      warn.classList.toggle('hidden', parentTracked && !conflict);
+      warn.textContent = conflict
+        ? '上位のフォルダが「時間を記録しない」ため、この学習モードは働いていません。上位を記録するに変えるか、このフォルダを移してください。'
+        : '上位のフォルダが「時間を記録しない」ので、学習モードは使えません。';
     };
     sChk.onchange = syncStudy;
     aChk.onchange = syncStudy;
     syncStudy();
 
-    fBox.append(sw, dr, tRow, tHint, sRow, aRow, sStepRow, hint);
+    fBox.append(sw, dr, tRow, tHint, sRow, warn, aRow, sStepRow, hint);
 
     // --- タスク用 ---
     const tBox = document.createElement('div');
@@ -1563,6 +1646,16 @@
     ok.onclick = () => {
       const nm = name.value.trim();
       if(!nm){ name.focus(); return; }
+      // pathOf() が 20 段で打ち切るので、それ以上は作らせない
+      if(mode!=='edit' && pathOf(browseId).length >= 20){
+        alert('階層が深すぎます。20 階層までにしてください。');
+        return;
+      }
+      // 記録を止めると、配下の学習モードが働かなくなる
+      if(mode==='edit' && type==='folder' && !tChk.checked && !sChk.checked){
+        const hasStudy = [...descendants(node.id)].some(i => i!==node.id && tree[i] && tree[i].study);
+        if(hasStudy && !confirm('このフォルダの中に学習モードのフォルダがあります。\n「時間を記録する」を外すと、その復習リマインドは働かなくなります。\n\n続けますか？')) return;
+      }
       const base = {
         name:nm, type,
         color:     type==='folder' ? color : null,
@@ -1702,7 +1795,8 @@
         event(`task-${n.id}`, n.due, n.name, path, Math.max(15, n.planMin||30), rruleOf(n), n.dueTime);
       }
       if(reviewOn(n) && n.nextReview && diffDays(n.nextReview, today) >= 0 && !examPassed(n.id)){
-        event(`rv-${n.id}-${n.nextReview}`, n.nextReview, `復習: ${n.name}`, path, 30, null);
+        // 日付を UID に含めない。含めると書き出すたびに別イベントとして積み上がる
+        event(`review-${n.id}`, n.nextReview, `復習: ${n.name}`, path, 30, null);
       }
     });
 
@@ -2226,8 +2320,58 @@
 
   // ===== バックアップ =====
   // iPhone では共有シートが開くので、そのまま「ファイル」や iCloud Drive に保存できる
+  const SCHEMA_VERSION = 1;
+
+  // 読み込みは「全部通ってから一括で置き換える」。途中で失敗しても何も変えない。
+  function validateBackup(raw){
+    const bad = reason => ({ ok:false, reason });
+    if(!raw || typeof raw !== 'object' || Array.isArray(raw)) return bad('中身がバックアップの形式ではありません。');
+
+    let d;
+    if(raw.data && typeof raw.data === 'object'){
+      if(typeof raw.schemaVersion !== 'number') return bad('schemaVersion がありません。');
+      if(raw.schemaVersion > SCHEMA_VERSION) return bad(`新しい形式（v${raw.schemaVersion}）です。アプリを更新してください。`);
+      d = raw.data;
+    }else if(raw.v){
+      d = raw;                                        // 旧形式（フラット）
+    }else{
+      return bad('バックアップのファイルではないようです。');
+    }
+
+    const isObj = x => x && typeof x === 'object' && !Array.isArray(x);
+    if(d.tree    !== undefined && !isObj(d.tree))            return bad('tree の形式が不正です。');
+    if(d.records !== undefined && !isObj(d.records))         return bad('records の形式が不正です。');
+    if(d.cfg     !== undefined && !isObj(d.cfg))             return bad('cfg の形式が不正です。');
+    if(d.ui      !== undefined && !isObj(d.ui))              return bad('ui の形式が不正です。');
+    if(d.logs    !== undefined && !Array.isArray(d.logs))    return bad('logs の形式が不正です。');
+    if(d.dones   !== undefined && !Array.isArray(d.dones))   return bad('dones の形式が不正です。');
+
+    const t = d.tree || {};
+    for(const [key, n] of Object.entries(t)){
+      if(!isObj(n))                             return bad(`ノード ${key} が不正です。`);
+      if(n.id !== key)                          return bad(`ノード ${key} の id が一致しません。`);
+      if(n.type !== 'folder' && n.type !== 'task') return bad(`ノード ${n.name || key} の種別が不正です。`);
+      if(n.parent != null && !t[n.parent])      return bad(`ノード ${n.name || key} の親が見つかりません。`);
+    }
+    // 循環参照（親をたどって自分に戻る）を弾く
+    for(const id of Object.keys(t)){
+      const seen = new Set([id]);
+      let p = t[id].parent, hop = 0;
+      while(p != null && hop++ < 40){
+        if(seen.has(p)) return bad(`ノード ${t[id].name || id} の親子関係が循環しています。`);
+        seen.add(p); p = t[p] ? t[p].parent : null;
+      }
+    }
+    return { ok:true, data:d };
+  }
+
   async function exportData(){
-    const json = JSON.stringify({ v:2, exportedAt:new Date().toISOString(), cfg, records, logs, tree, ui, dones }, null, 2);
+    const json = JSON.stringify({
+      schemaVersion: SCHEMA_VERSION,
+      appBuild: BUILD,
+      exportedAt: new Date().toISOString(),
+      data: { tree, records, logs, dones, cfg, ui }
+    }, null, 2);
     const name = `awapomo-${dayKey()}.json`;
     let shared = false;
     try{
@@ -2253,9 +2397,10 @@
 
   function renderNotice(){
     const label = $('backupLabel');
-    if(label) label.textContent = ui.lastBackup
-      ? `最終 ${new Date(ui.lastBackup).toLocaleDateString('ja-JP')}`
-      : 'まだ書き出していません';
+    if(label) label.textContent = !storageOk
+      ? '保存できていません（空き容量を確認してください）'
+      : ui.lastBackup ? `最終 ${new Date(ui.lastBackup).toLocaleDateString('ja-JP')}`
+                      : 'まだ書き出していません';
 
     const DAY = 86400000;
     const stale = !ui.lastBackup || Date.now() - ui.lastBackup > 14*DAY;
@@ -2308,17 +2453,32 @@
       const file = e.target.files[0]; if(!file) return;
       const r = new FileReader();
       r.onload = () => {
-        try{
-          const d = JSON.parse(r.result);
-          if(!confirm('現在のデータを読み込んだ内容で置き換えます。よろしいですか？')) return;
-          if(d.cfg) cfg = Object.assign({}, DEFAULT_CFG, d.cfg);
-          records = d.records||{}; logs = d.logs||[]; tree = d.tree||{}; dones = d.dones||[];
-          ui = Object.assign({}, UI_DEFAULT, d.ui||{});
-          save(K_CFG,cfg); save(K_REC,records); save(K_LOG,logs); save(K_TREE,tree);
-          save(K_UI,ui); save(K_DONE,dones);
-          location.reload();
-        }catch{ alert('読み込めませんでした。'); }
+        let raw;
+        try{ raw = JSON.parse(r.result); }
+        catch{ alert('ファイルを読めませんでした。JSON として壊れています。'); return; }
+
+        const v = validateBackup(raw);
+        if(!v.ok){ alert(`読み込めませんでした。\n\n${v.reason}\n\n現在のデータは変更していません。`); return; }
+
+        const d = v.data;
+        const count = Object.keys(d.tree || {}).length;
+        if(!confirm(`現在のデータを置き換えます。\n\n読み込む項目：${count}件\n書き出し日時：${raw.exportedAt || '不明'}\n\nよろしいですか？`)) return;
+
+        // 置き換える前に、いまのデータを退避しておく
+        save(K_AUTOBK, JSON.stringify({
+          schemaVersion: SCHEMA_VERSION, appBuild: BUILD, exportedAt: new Date().toISOString(),
+          data: { tree, records, logs, dones, cfg, ui }
+        }));
+
+        cfg     = Object.assign({}, DEFAULT_CFG, d.cfg || {});
+        records = d.records || {}; logs = d.logs || []; tree = d.tree || {}; dones = d.dones || [];
+        ui      = Object.assign({}, UI_DEFAULT, d.ui || {});
+        const ok = [save(K_CFG,cfg), save(K_REC,records), save(K_LOG,logs),
+                    save(K_TREE,tree), save(K_UI,ui), save(K_DONE,dones)].every(Boolean);
+        if(!ok){ alert('保存に失敗しました。端末の空き容量を確認してください。'); return; }
+        location.reload();
       };
+      r.onerror = () => alert('ファイルを読めませんでした。');
       r.readAsText(file);
       e.target.value = '';
     };
@@ -2337,10 +2497,12 @@
   // ===== ループ =====
   setInterval(() => {
     render();
-    if(st.mode!==IDLE && Date.now()-lastFlush>10000){ flush(); renderSummary(); renderChart(); renderCal(); }
+    if(st.mode!==IDLE && Date.now()-lastFlush>10000){
+      flush(); saveTimer(); renderSummary(); renderChart(); renderCal();
+    }
   }, 250);
 
-  const persist = () => { if(st.mode!==IDLE) flush(); };
+  const persist = () => { if(st.mode!==IDLE){ flush(); saveTimer(); } };
   document.addEventListener('visibilitychange', () => { persist(); if(!document.hidden) updateWakeLock(); });
   window.addEventListener('pagehide', persist);
   window.addEventListener('beforeunload', persist);
@@ -2363,11 +2525,16 @@
   setView(ui.view || 'bar');
   dayStamp = dayKey();
   autoReset();              // 毎日・毎週のやり残しを次の機会へ送る
+  restoreTimer();           // 再読込しても計測中のセッションを引き継ぐ
   render();
   renderTree();
   renderStats();
   renderToday();
   setTab(ui.tab || 'today');
+  // 端末の空き容量が逼迫しても消されにくくする（対応環境のみ・失敗しても続行）
+  if(navigator.storage && navigator.storage.persist){
+    navigator.storage.persisted().then(p => { if(!p) navigator.storage.persist(); }).catch(()=>{});
+  }
 
   // 日付がまたいだら「今日」を組み直す
   setInterval(() => {
