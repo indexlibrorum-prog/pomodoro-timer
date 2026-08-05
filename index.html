@@ -173,6 +173,23 @@
   .form .chk{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--fg);cursor:pointer}
   .form .chk input{accent-color:var(--work);width:16px;height:16px;margin:0}
 
+  /* ---- タイマーの対象選択 ---- */
+  .pick-btn{width:100%;display:flex;align-items:center;gap:10px;background:var(--card2);
+    border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:14px;font-weight:500;text-align:left}
+  .pick-btn span:first-child{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pick-btn .cv{color:var(--fg-dim);font-size:12px;flex:none;transition:transform .2s}
+  .pick-btn.open .cv{transform:rotate(180deg)}
+  .pick{width:100%;background:var(--card2);border-radius:12px;padding:8px;max-height:44vh;overflow:auto;
+    display:flex;flex-direction:column;gap:4px}
+  .pick h3{font-size:11px;color:var(--fg-dim);letter-spacing:.06em;margin:8px 6px 2px;font-weight:600}
+  .pick button{width:100%;display:flex;align-items:center;gap:9px;background:none;border:0;
+    border-left:3px solid transparent;border-radius:9px;padding:9px 10px;text-align:left;font-weight:400}
+  .pick button:hover{background:var(--card)}
+  .pick button.on{background:var(--card);border-left-color:var(--work)}
+  .pick .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+  .pick .pt{font-size:11px;color:var(--fg-dim);flex:none;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pick .none{font-size:13px;color:var(--fg-dim);text-align:center;padding:14px 4px;line-height:1.7}
+
   /* ---- ノイズ ---- */
   .noise{display:flex;align-items:center;gap:10px;width:100%;background:var(--card2);
     border-radius:12px;padding:8px 12px}
@@ -299,6 +316,8 @@
   <div class="view hidden" id="viewTimer">
   <h1>タイマー</h1>
   <section class="card timer">
+    <button class="pick-btn" id="pickBtn"><span id="pickCur">対象：未選択</span><span class="cv">▾</span></button>
+    <div class="pick hidden" id="pickList"></div>
     <input id="taskInput" class="task-input" type="text" maxlength="60" placeholder="いまから何をやる？（任意）">
     <div id="taskView" class="task-view hidden"></div>
 
@@ -841,7 +860,7 @@
     const sessionWork = st.sessionWork + (st.mode===IDLING||st.mode===WORK ? seg : 0);
     const acts = $('actions');
 
-    $('taskInput').classList.toggle('hidden', st.mode!==IDLE);
+    renderPickerHead();
     $('taskView').classList.toggle('hidden', st.mode===IDLE);
     $('taskView').textContent = st.label;
     $('choice').classList.toggle('hidden', st.mode!==CHOICE);
@@ -913,6 +932,7 @@
     document.querySelectorAll('.tabbar button').forEach(b => b.classList.toggle('on', b.dataset.view===v));
     renderMini();
     if(v==='today') renderToday();
+    if(v==='timer') renderPicker();
     if(v==='list')  renderTree();
     if(v==='log')   renderStats();
     window.scrollTo({ top:0 });
@@ -929,6 +949,86 @@
                                   : st.mode===IDLING ? 'var(--idling)' : 'var(--work)';
   }
   $('miniBar').onclick = () => setTab('timer');
+
+  // ===== タイマーの対象選択 =====
+  // 一覧に登録済みのタスクから選ぶだけ。ここでは追加や編集はしない。
+  let pickOpen = false;
+
+  function pickRow(n){
+    const b = document.createElement('button');
+    b.className = ui.lockedId === n.id ? 'on' : '';
+    b.style.borderLeftColor = ui.lockedId === n.id ? colorOf(n.id) : 'transparent';
+    const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = n.name;
+    const pt = document.createElement('span'); pt.className = 'pt';
+    pt.textContent = pathOf(n.id).slice(0,-1).map(x => x.name).join(' / ');
+    b.append(nm, pt);
+    b.onclick = () => {
+      ui.lockedId = n.id; save(K_UI, ui);
+      pickOpen = false;
+      selId = n.id; browseId = n.parent || null;
+      renderPicker(); render(); renderTree();
+    };
+    return b;
+  }
+
+  // 見出しだけの更新。タイマーの毎フレーム描画から呼ぶので一覧は組み直さない
+  function renderPickerHead(){
+    const locked = ui.lockedId && tree[ui.lockedId];
+    $('pickCur').textContent = locked ? `対象：${nameOf(ui.lockedId)}` : '対象：未選択（自由入力）';
+    $('pickCur').style.color = locked ? colorOf(ui.lockedId) : '';
+    $('pickBtn').classList.toggle('open', pickOpen);
+    // 対象が決まっていれば自由入力欄は不要
+    $('taskInput').classList.toggle('hidden', st.mode !== IDLE || !!locked);
+    $('pickBtn').classList.toggle('hidden', st.mode !== IDLE);
+    $('pickList').classList.toggle('hidden', !pickOpen || st.mode !== IDLE);
+  }
+
+  function renderPicker(){
+    renderPickerHead();
+    if(!pickOpen) return;
+
+    const box = $('pickList'); box.innerHTML = '';
+    const today = dayKey();
+    const soon = [], rest = [];
+    Object.values(tree).forEach(n => {
+      if(n.type !== 'task' || isDone(n)) return;
+      const rv = (!cfg.hideRec && reviewOn(n) && n.nextReview) ? diffDays(n.nextReview, today) : null;
+      const du = n.due ? diffDays(n.due, today) : null;
+      const vals = [rv, du].filter(v => v !== null);
+      (vals.length && Math.min(...vals) <= 0 ? soon : rest).push(n);
+    });
+    const byOrder = (a,b) => (a.order||0) - (b.order||0) || a.createdAt - b.createdAt;
+    soon.sort(byOrder); rest.sort(byOrder);
+
+    if(!soon.length && !rest.length){
+      const p = document.createElement('div'); p.className = 'none';
+      p.textContent = 'タスクがありません。「一覧」タブか「今日」タブから追加してください。';
+      box.append(p);
+    }
+    const sect = (title, arr) => {
+      if(!arr.length) return;
+      const h = document.createElement('h3'); h.textContent = title;
+      box.append(h);
+      arr.forEach(n => box.append(pickRow(n)));
+    };
+    sect('今日のもの', soon);
+    sect('そのほか', rest);
+
+    const h = document.createElement('h3'); h.textContent = '　';
+    const clr = document.createElement('button');
+    clr.className = ui.lockedId ? '' : 'on';
+    const cn = document.createElement('span'); cn.className = 'nm';
+    cn.textContent = '対象を決めずに測る';
+    cn.style.color = 'var(--fg-dim)';
+    clr.append(cn);
+    clr.onclick = () => {
+      ui.lockedId = null; save(K_UI, ui);
+      pickOpen = false;
+      renderPicker(); render(); renderTree();
+    };
+    box.append(h, clr);
+  }
+  $('pickBtn').onclick = () => { pickOpen = !pickOpen; renderPicker(); };
 
   // ===== 今日 =====
   function todayItems(){
