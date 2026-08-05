@@ -518,7 +518,7 @@
   // ===== 保存領域 =====
   const K_CFG='awapomo.cfg', K_REC='awapomo.records', K_LOG='awapomo.log', K_TREE='awapomo.tree',
         K_UI='awapomo.ui', K_DONE='awapomo.done';
-  const BUILD = '2026-08-05 タスク選択';
+  const BUILD = '2026-08-05 試験終了後の復習を止める';
   const CIRC = 2 * Math.PI * 116;
   const PALETTE = ['#ff7a59','#ffc857','#4cc9a7','#7aa2ff','#c792ea','#f06292','#4dd0e1','#a5d66d','#9aa4b8'];
 
@@ -640,6 +640,8 @@
     for(let i=p.length-1;i>=0;i--) if(p[i].study && p[i].endDate) return p[i].endDate;
     return null;
   };
+  // 試験が終わったら、その復習はもうリマインドしない
+  const examPassed = id => { const e = examOf(id); return !!e && diffDays(e, dayKey()) < 0; };
   const autoOf = id => {
     const p = pathOf(id);
     for(let i=p.length-1;i>=0;i--) if(p[i].study) return p[i].autoSteps !== false;
@@ -741,12 +743,6 @@
     delete tree[id];
     if(ui.lockedId===id) ui.lockedId=null;
     if(selId===id) selId=null;
-  }
-  function dueTasks(){
-    const today = dayKey();
-    return Object.values(tree)
-      .filter(n => reviewOn(n) && n.nextReview && diffDays(n.nextReview, today) <= 0)
-      .sort((a,b) => a.nextReview < b.nextReview ? -1 : 1);
   }
   function toggleDone(n, on){
     if(on){
@@ -1010,7 +1006,7 @@
       if(n.type === 'folder'){ folders.push(n); return; }
       if(n.type !== 'task') return;
       if(isDone(n)){ done.push(n); return; }
-      const rv = (!cfg.hideRec && reviewOn(n) && n.nextReview) ? diffDays(n.nextReview, today) : null;
+      const rv = (!cfg.hideRec && reviewOn(n) && n.nextReview && !examPassed(n.id)) ? diffDays(n.nextReview, today) : null;
       const du = n.due ? diffDays(n.due, today) : null;
       const vals = [rv, du].filter(v => v !== null);
       (vals.length && Math.min(...vals) <= 0 ? soon : rest).push(n);
@@ -1086,7 +1082,7 @@
     const late = [], now = [], noDate = [];
     Object.values(tree).forEach(n => {
       if(n.type!=='task' || isDone(n)) return;
-      const rv = (!cfg.hideRec && reviewOn(n) && n.nextReview) ? diffDays(n.nextReview, today) : null;
+      const rv = (!cfg.hideRec && reviewOn(n) && n.nextReview && !examPassed(n.id)) ? diffDays(n.nextReview, today) : null;
       const du = n.due ? diffDays(n.due, today) : null;
       const vals = [rv, du].filter(v => v !== null);
       if(!vals.length){ noDate.push({ n, left:null }); return; }
@@ -1611,7 +1607,7 @@
       if(n.due && (isRecurring(n) || diffDays(n.due, today) >= 0)){
         event(`task-${n.id}`, n.due, n.name, path, Math.max(15, n.planMin||30), rruleOf(n));
       }
-      if(reviewOn(n) && n.nextReview && diffDays(n.nextReview, today) >= 0){
+      if(reviewOn(n) && n.nextReview && diffDays(n.nextReview, today) >= 0 && !examPassed(n.id)){
         event(`rv-${n.id}-${n.nextReview}`, n.nextReview, `復習: ${n.name}`, path, 30, null);
       }
     });
