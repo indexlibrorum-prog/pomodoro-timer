@@ -239,7 +239,8 @@
   .gcal-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
   .gcal-list li{display:flex;gap:10px;padding:8px 10px;border-radius:9px;background:var(--card2);font-size:13px}
   .gcal-list time{color:var(--fg-dim);font-variant-numeric:tabular-nums;flex:none}
-  .gcal-list li>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .gcal-list .gcal-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .gcal-list .gcal-acts{display:flex;gap:5px;flex:none}
   .gcal-list .gcal-use{flex:none;background:var(--card);border:1px solid var(--line);border-radius:8px;
     color:var(--fg);font:inherit;font-size:11px;padding:5px 9px;white-space:nowrap}
   .settings-body input.long{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:9px;
@@ -1292,24 +1293,32 @@
   }
   $('pickBtn').onclick = () => { pickOpen = !pickOpen; renderPicker(); };
 
-  // タイマーで自由入力した内容を、そのまま一覧のタスクとして登録する
-  function registerFromText(text, linkCurrent){
+  function createTask(text, options={}){
     const nm = (text || '').trim();
     if(!nm) return null;
-    const sibs = childrenOf(browseId);
+    const parentId = Object.prototype.hasOwnProperty.call(options,'parentId') ? options.parentId : browseId;
+    const sibs = childrenOf(parentId);
     const id = uid();
     tree[id] = {
-      id, type:'task', name:nm, parent:browseId||null, createdAt:Date.now(),
+      id, type:'task', name:nm, parent:parentId||null, createdAt:Date.now(),
       order:(sibs.length ? Math.max(...sibs.map(s=>s.order||0))+1 : 0),
       color:null, startDate:null, endDate:null, study:false, autoSteps:true, steps:'',
-      planMin:0, due:null, dueTime:null, recur:{ freq:'none', every:1, days:[], monthDay:null },
+      planMin:Math.max(0,Math.min(600,Number(options.planMin)||0)),
+      due:options.due||null, dueTime:options.due ? (options.dueTime||null) : null,
+      recur:{ freq:'none', every:1, days:[], monthDay:null },
       review:false, doneAt:null, reviewIdx:0, nextReview:null
     };
     selId = id;
     save(K_TREE, tree);
-    // タイマーから登録した以上は測るつもりなので、記録しないフォルダでも対象にする
-    ui.lockedId = id; save(K_UI, ui);
-    if(linkCurrent){ st.nodeId = id; st.label = nm; }   // 計測中なら、この記録もタスクに紐づける
+    if(options.lock){ ui.lockedId = id; save(K_UI, ui); }
+    if(options.linkCurrent){ st.nodeId = id; st.label = nm; }
+    return id;
+  }
+
+  // タイマーで自由入力した内容を、そのまま一覧のタスクとして登録する
+  function registerFromText(text, linkCurrent){
+    const id = createTask(text,{parentId:browseId,lock:true,linkCurrent});
+    if(!id) return null;
     renderTree(); renderToday(); renderPicker(); render();
     return id;
   }
@@ -1429,19 +1438,75 @@
     renderTree(); render();
     $('taskInput').focus();
   }
+  function openGoogleEventForm(e){
+    setTab('list');
+    const f=$('form'); f.classList.remove('hidden'); f.innerHTML='';
+    const heading=document.createElement('strong'); heading.textContent='Google予定を一覧に登録';
+    const hint=document.createElement('div');
+    hint.style.cssText='font-size:11px;color:var(--fg-dim);line-height:1.6';
+    hint.textContent='Google側の予定は変更せず、端末内のタスクとして追加します。';
+    const name=document.createElement('input'); name.type='text'; name.maxLength=60;
+    name.placeholder='タスク名'; name.value=(e.summary||'').trim()||'（無題）';
+
+    const folderRow=document.createElement('div'); folderRow.className='stack';
+    const folderLabel=document.createElement('label'); folderLabel.textContent='登録先フォルダ';
+    const folder=document.createElement('select');
+    const root=document.createElement('option'); root.value=''; root.textContent='ホーム直下'; folder.append(root);
+    Object.values(tree).filter(n=>n.type==='folder')
+      .sort((a,b)=>nameOf(a.id).localeCompare(nameOf(b.id),'ja'))
+      .forEach(n=>{ const o=document.createElement('option'); o.value=n.id; o.textContent=nameOf(n.id); folder.append(o); });
+    folder.value=browseId&&tree[browseId]?.type==='folder' ? browseId : '';
+    folderRow.append(folderLabel,folder);
+
+    const start=e.start?.dateTime ? new Date(e.start.dateTime) : null;
+    const end=e.end?.dateTime ? new Date(e.end.dateTime) : null;
+    const dueRow=document.createElement('div'); dueRow.className='stack';
+    const dueLabel=document.createElement('label'); dueLabel.textContent='期日（Google予定から入力）';
+    const dueInputs=document.createElement('div'); dueInputs.className='r';
+    const due=document.createElement('input'); due.type='date'; due.value=e.start?.date||(start?dayKey(start):dayKey());
+    const dueTime=document.createElement('input'); dueTime.type='time'; dueTime.value=start?`${pad(start.getHours())}:${pad(start.getMinutes())}`:'';
+    dueInputs.append(due,dueTime); dueRow.append(dueLabel,dueInputs);
+
+    const planRow=document.createElement('div'); planRow.className='r';
+    const planLabel=document.createElement('label'); planLabel.textContent='予定時間';
+    const plan=document.createElement('input'); plan.type='number'; plan.min='0'; plan.max='600'; plan.step='5';
+    const duration=start&&end ? Math.round((end-start)/60000) : 0;
+    plan.value=duration>0&&duration<=600 ? duration : '';
+    const planUnit=document.createElement('label'); planUnit.textContent='分'; planRow.append(planLabel,plan,planUnit);
+
+    const acts=document.createElement('div'); acts.className='rec-actions';
+    const ok=document.createElement('button'); ok.className='sm primary'; ok.textContent='一覧に追加';
+    ok.onclick=()=>{
+      const nm=name.value.trim(); if(!nm){name.focus();return;}
+      const parentId=folder.value||null;
+      const id=createTask(nm,{parentId,due:due.value||null,dueTime:dueTime.value||null,planMin:plan.value});
+      if(!id) return;
+      browseId=parentId; selId=id;
+      closeForm(); renderTree(); renderToday(); renderPicker(); render();
+    };
+    const cancel=document.createElement('button'); cancel.className='sm ghost'; cancel.textContent='キャンセル'; cancel.onclick=closeForm;
+    acts.append(ok,cancel);
+    f.append(heading,hint,name,folderRow,dueRow,planRow,acts);
+    $('recActions').classList.add('hidden');
+    name.focus();
+  }
   function renderGoogleCalendar(){
     const list=$('googleEvents'), today=dayKey(); list.innerHTML='';
     const events=(gcal.events||[]).filter(e=>googleEventDay(e)===today && e.status!=='cancelled')
       .sort((a,b)=>String(a.start?.dateTime||a.start?.date||'').localeCompare(String(b.start?.dateTime||b.start?.date||'')));
     events.forEach(e=>{
-      const li=document.createElement('li'), tm=document.createElement('time'), name=document.createElement('span'), use=document.createElement('button');
+      const li=document.createElement('li'), tm=document.createElement('time'), name=document.createElement('span'), actions=document.createElement('span'), use=document.createElement('button'), add=document.createElement('button');
       tm.textContent=e.start?.dateTime ? new Date(e.start.dateTime).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}) : '終日';
-      name.textContent=e.summary||'（無題）';
+      name.className='gcal-name'; name.textContent=e.summary||'（無題）';
+      actions.className='gcal-acts';
       use.className='gcal-use'; use.type='button'; use.textContent='タイマーへ';
       use.title=`${name.textContent}をタイマーの対象にする`;
       use.disabled=st.mode!==IDLE;
       use.onclick=()=>useGoogleEventForTimer(e);
-      li.append(tm,name,use); list.append(li);
+      add.className='gcal-use'; add.type='button'; add.textContent='一覧へ';
+      add.title=`${name.textContent}を一覧に登録する`;
+      add.onclick=()=>openGoogleEventForm(e);
+      actions.append(use,add); li.append(tm,name,actions); list.append(li);
     });
     list.classList.toggle('hidden',!events.length);
     $('googleStatus').textContent = !cfg.googleClientId ? '設定が必要'
